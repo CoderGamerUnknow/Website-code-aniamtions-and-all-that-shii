@@ -1,4 +1,11 @@
-import { createContext, useRef, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useRef,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Lenis from "@studio-freight/lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -17,15 +24,15 @@ export const useScrollContext = () => useContext(scrollContext);
 
 export function Scroll({ children }) {
   const [scroll, setScroll] = useState({
-    progress: 0,
     ref: null,
     lenis: null,
   });
   const wrapper = useRef(null);
   const content = useRef(null);
-  const updateProgress = (newProgress) => {
-    setScroll((prevScroll) => ({ ...prevScroll, progress: newProgress }));
-  };
+  // Scroll progress changes on every animation frame. Holding it in a ref
+  // instead of state keeps the whole tree from re-rendering on every tick —
+  // consumers (the canvas scene) read it inside their own render loop.
+  const progressRef = useRef(0);
 
   // Function to update the 'ref' property
   const updateRef = (newRef) => {
@@ -56,10 +63,11 @@ export function Scroll({ children }) {
 
     updateRef(content.current);
     updateLenis(lenis);
+    if (import.meta.env.DEV) window.__lenis = lenis;
 
     lenis.on("scroll", ({ progress }) => {
       ScrollTrigger.update(); // Update ScrollTrigger first
-      updateProgress(progress); // Then update custom progress
+      progressRef.current = progress; // Then publish the custom progress
     });
 
     gsap.ticker.add((time) => lenis.raf(time * 4000));
@@ -71,6 +79,10 @@ export function Scroll({ children }) {
       lenis.destroy();
     };
   }, []);
+
+  // Stable context value: it only changes when Lenis or the scroll element
+  // are published, never on scroll.
+  const value = useMemo(() => ({ ...scroll, progressRef }), [scroll]);
 
   return (
     <div
@@ -95,7 +107,7 @@ export function Scroll({ children }) {
           width: "100%",
         }}
       >
-        <scrollContext.Provider value={scroll}>
+        <scrollContext.Provider value={value}>
           {children}
         </scrollContext.Provider>
       </div>

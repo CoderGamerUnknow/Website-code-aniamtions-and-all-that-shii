@@ -24,30 +24,7 @@ function makeStars(count) {
 }
 
 function drawScene(ctx, width, height, time, progress) {
-  // background gradient
-  const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, "#010301");
-  bg.addColorStop(0.55, "#04120a");
-  bg.addColorStop(1, "#081a04");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
-
   const horizon = height * 0.42;
-
-  // horizon glow
-  const glow = ctx.createRadialGradient(
-    width / 2,
-    horizon,
-    0,
-    width / 2,
-    horizon,
-    height * 0.55
-  );
-  glow.addColorStop(0, `rgba(${GREEN.join(",")},0.38)`);
-  glow.addColorStop(0.35, `rgba(${GREEN.join(",")},0.12)`);
-  glow.addColorStop(1, `rgba(${GREEN.join(",")},0)`);
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, width, height);
 
   // stars / data motes (parallax with scroll)
   ctx.fillStyle = `rgba(${GREEN.join(",")},0.9)`;
@@ -110,13 +87,43 @@ function drawScene(ctx, width, height, time, progress) {
 // stable star cache (created once)
 makeStars.cache = makeStars(140);
 
+// The background gradient and the horizon glow never change between frames,
+// so they are rendered once into an offscreen canvas and blitted afterwards.
+function buildBackground(width, height) {
+  const background = document.createElement("canvas");
+  background.width = width;
+  background.height = height;
+  const ctx = background.getContext("2d");
+  if (!ctx) return background;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, height);
+  bg.addColorStop(0, "#010301");
+  bg.addColorStop(0.55, "#04120a");
+  bg.addColorStop(1, "#081a04");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  const horizon = height * 0.42;
+  const glow = ctx.createRadialGradient(
+    width / 2,
+    horizon,
+    0,
+    width / 2,
+    horizon,
+    height * 0.55
+  );
+  glow.addColorStop(0, `rgba(${GREEN.join(",")},0.38)`);
+  glow.addColorStop(0.35, `rgba(${GREEN.join(",")},0.12)`);
+  glow.addColorStop(1, `rgba(${GREEN.join(",")},0)`);
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, height);
+
+  return background;
+}
+
 export function VideoBackground({ videoRef, scroll }) {
   const canvasRef = useRef(null);
-  const progressRef = useRef(0);
-  const scrollRef = useRef(null);
-  const { ref: contentRef } = scroll;
-  progressRef.current = scroll.progress;
-  scrollRef.current = scroll.ref;
+  const { ref: contentRef, progressRef } = scroll;
 
   // Size the scroll container like the original video-duration-driven layout.
   useEffect(() => {
@@ -141,11 +148,14 @@ export function VideoBackground({ videoRef, scroll }) {
     if (!ctx) return;
 
     let frameId;
+    let dpr = 1;
+    let background = null;
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      background = buildBackground(canvas.width, canvas.height);
     };
     resize();
     window.addEventListener("resize", resize);
@@ -153,7 +163,14 @@ export function VideoBackground({ videoRef, scroll }) {
     const loop = (time) => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      drawScene(ctx, width, height, time, progressRef.current);
+
+      // Blit the cached gradient layer 1:1 in device pixels, then draw the
+      // animated parts in CSS pixels.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(background, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      drawScene(ctx, width, height, time, progressRef?.current ?? 0);
       frameId = requestAnimationFrame(loop);
     };
     frameId = requestAnimationFrame(loop);
@@ -162,7 +179,7 @@ export function VideoBackground({ videoRef, scroll }) {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [progressRef]);
 
   return (
     <div

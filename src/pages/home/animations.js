@@ -93,7 +93,11 @@ export const animateScrollToTop = (scrollToTopRef, scrollRef) => {
     scrollTrigger: {
       trigger: scrollRef,
       start: "0px",
-      end: "10080px",
+      // The trigger is the scroll content, so "bottom bottom" is the last
+      // reachable scroll position. A hard-coded pixel value used to sit
+      // beyond the maximum scroll on short viewports, which froze the
+      // show/hide handling once the user scrolled past it.
+      end: "bottom bottom",
       onUpdate: (self) => {
         const scrollDirection = self.direction;
 
