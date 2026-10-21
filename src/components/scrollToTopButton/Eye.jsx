@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue } from "framer-motion";
 import { useScrollContext } from "../Scroll";
 
@@ -12,7 +12,22 @@ export function Eye() {
     y: useMotionValue(0),
   };
 
-  const size = window.innerWidth >= 1100 ? 68 : 40; // Adjust as needed
+  // The depth of the iris follows the size of the eye, which changes with
+  // the viewport. Reading the width while rendering left the iris at the old
+  // depth after the window was resized. The values match the iris keyframes
+  // in index.css.
+  const [size, setSize] = useState(() =>
+    window.innerWidth >= 1100 ? 68 : 45
+  );
+
+  useEffect(() => {
+    const updateSize = () => {
+      setSize(window.innerWidth >= 1100 ? 68 : 45);
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
   useEffect(() => {
     const updateEyePosition = () => {

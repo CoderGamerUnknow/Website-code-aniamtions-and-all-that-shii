@@ -100,6 +100,12 @@ export function Scroll({ children }) {
     if (previousPathname.current === pathname) return;
     previousPathname.current = pathname;
     lenisRef.current?.scrollTo(0, { immediate: true, force: true });
+    // Every page has its own scroll height, so the triggers that are measured
+    // against the content (the nav and the scroll-to-top eye) still hold the
+    // geometry of the page that was left behind. Without a refresh they keep
+    // the old start and end, which leaves them pointing past the end of the
+    // new page.
+    ScrollTrigger.refresh();
   }, [pathname]);
 
   // Stable context value: it only changes when Lenis or the scroll element

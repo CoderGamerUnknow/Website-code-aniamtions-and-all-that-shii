@@ -9,9 +9,26 @@ import { LandscapePrompt } from "./LandscapePrompt";
 import { useScrollContext } from "./Scroll";
 import { SCENE_SCROLL_HEIGHT } from "./VideoBackground";
 
+// Below this width the custom cursor is more in the way than it helps.
+const CURSOR_MIN_WIDTH = 1280;
+
 export function Layout({ children }) {
   const [loaderFinished, setLoaderFinished] = useState(false);
   const [timeline, setTimeline] = useState(null);
+  // The custom cursor is only meant for wide screens. The width used to be
+  // read while rendering, so a window that was resized below the threshold
+  // kept the cursor on screen.
+  const [isWideViewport, setIsWideViewport] = useState(
+    () => window.innerWidth >= CURSOR_MIN_WIDTH
+  );
+
+  useEffect(() => {
+    const onResize = () => {
+      setIsWideViewport(window.innerWidth >= CURSOR_MIN_WIDTH);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useLayoutEffect(() => {
     const context = gsap.context(() => {
@@ -28,7 +45,7 @@ export function Layout({ children }) {
     <>
       {loaderFinished ? (
         <>
-          {window.innerWidth >= 1280 && <StickyCursor />}
+          {isWideViewport && <StickyCursor />}
           <ScrollToTopButton />
           <NavBar />
           {children}

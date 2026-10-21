@@ -81,12 +81,11 @@ export function NavBar() {
   ];
 
   return (
+    // The bar itself is what slides away, so the ref belongs to the header.
+    // It used to be attached to the inner nav as well, where the second
+    // assignment silently decided which of the two was animated.
     <header ref={navRef} className="navbar__wrapper">
-      <nav
-        className="navbar"
-        ref={navRef}
-        style={{ fontFamily: "Rajdhani" }}
-      >
+      <nav className="navbar" style={{ fontFamily: "Rajdhani" }}>
         {routes.map((route) => {
           return (
             <Link

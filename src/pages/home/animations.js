@@ -122,6 +122,8 @@ export const animateScrollToTop = (scrollToTopRef, scrollRef) => {
   tl.to(scrollToTopRef.current, {
     autoAlpha: 0,
   });
+
+  return tl;
 };
 
 export const animateImage = () => {
