@@ -108,7 +108,7 @@ function Footer() {
           <section className="footer__block">
             <h3 className="footer__blockTitle">No affiliation</h3>
             <p>
-              This project is not affiliated with, authorised, sponsored,
+              This project is not affiliated with, authorized, sponsored,
               endorsed or approved by NVIDIA Corporation or any of its
               partners, resellers or studios. Links to nvidia.com are provided
               for convenience only and do not imply a partnership.
@@ -130,7 +130,7 @@ function Footer() {
             <h3 className="footer__blockTitle">Built with</h3>
             <p>
               React 18, Vite, GSAP with ScrollTrigger, Lenis, Framer Motion and
-              Sass, each used under its own open-source licence. Their authors
+              Sass, each used under its own open-source license. Their authors
               and maintainers do not endorse, sponsor or support this site.
             </p>
           </section>
