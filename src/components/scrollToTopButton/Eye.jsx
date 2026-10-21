@@ -87,7 +87,6 @@ export function Eye() {
         ref={irisRef}
         className="iris anim"
         style={{ transformStyle: "preserve-3d", pointerEvents: "auto" }}
-        whileHover={{ backgroundImage: "url('/inkArrowUp.png')" }}
         onClick={() => lenis && lenis.scrollTo("top", { lerp: 0.02 })}
       />
     </motion.div>

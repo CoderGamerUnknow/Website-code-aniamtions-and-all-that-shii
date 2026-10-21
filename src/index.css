@@ -264,6 +264,15 @@ body {
   animation-name: iris;
 }
 
+/* Hover state is a plain CSS swap: animating a gradient to an image URL is not
+   interpolatable and makes Framer Motion warn on every hover. */
+.eye .iris:hover {
+  background-image: url("/inkArrowUp.png");
+  background-size: 55%;
+  background-position: center;
+  animation: none;
+}
+
 .landscapePrompt {
   position: fixed;
   width: 100%;
