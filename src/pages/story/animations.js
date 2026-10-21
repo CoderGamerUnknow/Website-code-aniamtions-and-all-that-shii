@@ -10,4 +10,6 @@ export const animateStory = (storyRef) => {
   tl.to(storyRef.current, {
     autoAlpha: 1,
   });
+
+  return tl;
 };

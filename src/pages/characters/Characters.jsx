@@ -17,9 +17,24 @@ export function Characters() {
     productsData[0].content
   );
   const [selectedCharacter, setSelectedCharacter] = useState(null);
-  const { addStickyElement } = useStickyContext();
-  const createStickyElementRef = (el) => {
-    el && addStickyElement(el);
+  const { addStickyElement, removeStickyElement } = useStickyContext();
+  // One stable ref callback per category button, so the element registry does
+  // not collect duplicates (and stale nodes) on every render.
+  const stickyRefs = useRef(new Map());
+  const getStickyElementRef = (key) => {
+    if (!stickyRefs.current.has(key)) {
+      let element = null;
+      stickyRefs.current.set(key, (el) => {
+        if (el) {
+          element = el;
+          addStickyElement(el);
+        } else if (element) {
+          removeStickyElement(element);
+          element = null;
+        }
+      });
+    }
+    return stickyRefs.current.get(key);
   };
 
   useEffect(() => {
@@ -33,7 +48,13 @@ export function Characters() {
 
   return (
     <>
-      <SecondaryLoader key={selectedCategory} />
+      {/* The key has to change whenever the product set changes, otherwise
+          React keeps the same element and the animation never replays. The
+          previous key was the array itself, which stringifies to the same
+          value for two categories of the same size. */}
+      <SecondaryLoader
+        key={selectedCategory?.map((product) => product.name).join("|")}
+      />
       <div className={styles.characters}>
         <div ref={characterRef} className={styles.characters__wrapper}>
           <h1
@@ -47,7 +68,7 @@ export function Characters() {
               return (
                 <button
                   key={index}
-                  ref={createStickyElementRef}
+                  ref={getStickyElementRef(data.category)}
                   className={styles.characters__wrapper__categories__single}
                   onClick={() => setSelectedCategory(data.content)}
                 >

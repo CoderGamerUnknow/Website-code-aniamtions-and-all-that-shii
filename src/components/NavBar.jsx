@@ -9,9 +9,25 @@ export function NavBar() {
   const timeline = useRef(gsap.timeline());
   const scroll = useScrollContext();
   const navRef = useRef();
-  const { addStickyElement } = useStickyContext();
-  const createStickyElementRef = (el) => {
-    el && addStickyElement(el);
+  const { addStickyElement, removeStickyElement } = useStickyContext();
+  // One stable ref callback per link: a callback that is re-created on every
+  // render makes React detach and re-attach the element, which used to leave
+  // the element registry full of duplicates and stale nodes.
+  const stickyRefs = useRef(new Map());
+  const getStickyElementRef = (key) => {
+    if (!stickyRefs.current.has(key)) {
+      let element = null;
+      stickyRefs.current.set(key, (el) => {
+        if (el) {
+          element = el;
+          addStickyElement(el);
+        } else if (element) {
+          removeStickyElement(element);
+          element = null;
+        }
+      });
+    }
+    return stickyRefs.current.get(key);
   };
 
   const animateNav = (navRef, scrollRef) => {
@@ -19,7 +35,12 @@ export function NavBar() {
       scrollTrigger: {
         trigger: scrollRef,
         start: "0px",
-        end: "8600px",
+        // The trigger is the scroll content, so "bottom bottom" is the last
+        // reachable scroll position. A hard-coded pixel value used to end the
+        // trigger long before the bottom of the page, which left the nav
+        // stuck in its hidden state while scrolling up through the last
+        // stretch of the scene.
+        end: "bottom bottom",
         onUpdate: (self) => {
           const scrollDirection = self.direction;
 
@@ -77,7 +98,7 @@ export function NavBar() {
               {route.name}
               <div
                 className="navbar__pseudoElement"
-                ref={createStickyElementRef}
+                ref={getStickyElementRef(route.path)}
               ></div>
             </Link>
           );

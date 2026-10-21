@@ -4,10 +4,13 @@ import { motion, useVelocity } from "framer-motion";
 import styles from "./cursor.module.scss";
 import { useStickyContext } from "./StickyContext";
 
+const CURSOR_SIZE = 60;
+const CURSOR_SIZE_HOVERED = 70;
+
 export function StickyCursor() {
   const [isHovered, setIsHovered] = useState(false);
   const cursor = useRef(null);
-  const cursorSize = isHovered ? 70 : 60;
+  const cursorSize = isHovered ? CURSOR_SIZE_HOVERED : CURSOR_SIZE;
   const { stickyElementsRef } = useStickyContext();
 
   const mouse = {
@@ -35,13 +38,48 @@ export function StickyCursor() {
     }
   };
 
+  const rotateAndScaleCursor = (clientX, clientY, currentElement, size) => {
+    if (currentElement) {
+      const { left, top, height, width } =
+        currentElement.getBoundingClientRect();
+
+      // Calculate the center position of the hovered element
+      const center = { x: left + width / 2, y: top + height / 2 };
+
+      // Calculate the distance between the mouse pointer and the center of the custom cursor
+      const distance = { x: clientX - center.x, y: clientY - center.y };
+
+      rotate(distance);
+
+      // Stretch based on the distance
+      const absDistance = Math.hypot(distance.x, distance.y);
+      const newScaleX = transform(absDistance, [0, height / 2], [1, 1.3]);
+      const newScaleY = transform(absDistance, [0, width / 2], [1, 0.8]);
+      scale.x.set(newScaleX);
+      scale.y.set(newScaleY);
+
+      // Move the mouse to the center of the hovered element + slightly move it towards the mouse pointer
+      mouse.x.set(center.x - size / 2 + distance.x * 0.1);
+      mouse.y.set(center.y - size / 2 + distance.y * 0.1);
+    }
+  };
+
   const manageMouseMove = (e) => {
     const { clientX, clientY } = e;
 
+    // The hovered element is resolved from the registered elements on every
+    // move. The previous per-element mouseenter listeners were attached
+    // once, so elements registered later — for instance the category buttons
+    // of a route reached through client-side navigation — never triggered
+    // the hover state and the cursor stopped reacting to them.
     let hoveredElement = null;
 
-    stickyElementsRef.current.forEach((element) => {
+    for (const element of stickyElementsRef.current) {
+      if (!element.isConnected) continue;
       const { left, top, height, width } = element.getBoundingClientRect();
+      // Hidden elements report an empty rect that would match the pointer
+      // sitting in the top-left corner of the viewport.
+      if (width === 0 || height === 0) continue;
       if (
         clientX >= left &&
         clientX <= left + width &&
@@ -49,15 +87,24 @@ export function StickyCursor() {
         clientY <= top + height
       ) {
         hoveredElement = element;
+        break;
       }
-    });
+    }
 
-    if (isHovered) {
-      rotateAndScaleCursor(clientX, clientY, hoveredElement);
+    if (hoveredElement) {
+      setIsHovered(true);
+      rotateAndScaleCursor(
+        clientX,
+        clientY,
+        hoveredElement,
+        CURSOR_SIZE_HOVERED
+      );
     } else {
+      setIsHovered(false);
+
       // Move the custom cursor to the center of the viewport
-      mouse.x.set(clientX - cursorSize / 2);
-      mouse.y.set(clientY - cursorSize / 2);
+      mouse.x.set(clientX - CURSOR_SIZE / 2);
+      mouse.y.set(clientY - CURSOR_SIZE / 2);
 
       // Rotate and scale based on mouse velocity with dampening
       const velocityRotationFactor = 0.0002; // Increase or reduce rotation
@@ -106,57 +153,12 @@ export function StickyCursor() {
     return () => clearInterval(intervalId);
   }, [mouseXVelocity, mouseYVelocity, isHovered]);
 
-  const rotateAndScaleCursor = (clientX, clientY, currentElement) => {
-    if (currentElement) {
-      const { left, top, height, width } =
-        currentElement.getBoundingClientRect();
-
-      // Calculate the center position of the hovered element
-      const center = { x: left + width / 2, y: top + height / 2 };
-
-      // Calculate the distance between the mouse pointer and the center of the custom cursor
-      const distance = { x: clientX - center.x, y: clientY - center.y };
-
-      rotate(distance);
-
-      // Stretch based on the distance
-      const absDistance = Math.hypot(distance.x, distance.y);
-      const newScaleX = transform(absDistance, [0, height / 2], [1, 1.3]);
-      const newScaleY = transform(absDistance, [0, width / 2], [1, 0.8]);
-      scale.x.set(newScaleX);
-      scale.y.set(newScaleY);
-
-      // Move the mouse to the center of the hovered element + slightly move it towards the mouse pointer
-      mouse.x.set(center.x - cursorSize / 2 + distance.x * 0.1);
-      mouse.y.set(center.y - cursorSize / 2 + distance.y * 0.1);
-    }
-  };
-
-  const manageMouseOver = () => {
-    setIsHovered(true);
-  };
-
-  const manageMouseLeave = () => {
-    setIsHovered(false);
-
-    if (cursor.current) {
-      animate(
-        cursor.current,
-        { scaleX: 1, scaleY: 1 },
-        { duration: 0.1 },
-        { type: "spring" }
-      );
-    }
-  };
-
   useEffect(() => {
     const initialX = "-500%";
     const initialY = "-500%";
 
     mouse.x.set(initialX);
     mouse.y.set(initialY);
-
-    const elements = stickyElementsRef.current;
 
     const handleMouseOverWindow = () => {
       // Fade in the cursor when the mouse enters the window
@@ -168,32 +170,16 @@ export function StickyCursor() {
       animate(cursor.current, { opacity: 0 }, { duration: 0.3 });
     };
 
-    if (elements) {
-      elements.forEach((element) => {
-        element.addEventListener("mouseenter", manageMouseOver);
-        element.addEventListener("mouseleave", manageMouseLeave);
-      });
-    }
-
     window.addEventListener("mousemove", manageMouseMove);
     document.body.addEventListener("mouseout", handleMouseLeaveWindow);
     document.body.addEventListener("mouseover", handleMouseOverWindow);
 
     return () => {
-      const elementsToCleanUp = stickyElementsRef.current;
-
-      if (elementsToCleanUp) {
-        elementsToCleanUp.forEach((element) => {
-          element.removeEventListener("mouseenter", manageMouseOver);
-          element.removeEventListener("mouseleave", manageMouseLeave);
-        });
-      }
-
       window.removeEventListener("mousemove", manageMouseMove);
       document.body.removeEventListener("mouseout", handleMouseLeaveWindow);
       document.body.removeEventListener("mouseover", handleMouseOverWindow);
     };
-  }, [isHovered, stickyElementsRef]);
+  }, [stickyElementsRef]);
 
   const template = ({ rotate, scaleX, scaleY }) => {
     return `rotate(${rotate}) scaleX(${scaleX}) scaleY(${scaleY})`;

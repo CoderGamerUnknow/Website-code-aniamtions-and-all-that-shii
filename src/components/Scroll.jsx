@@ -9,6 +9,7 @@ import {
 import Lenis from "@studio-freight/lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useRouterState } from "@tanstack/react-router";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -33,6 +34,11 @@ export function Scroll({ children }) {
   // instead of state keeps the whole tree from re-rendering on every tick —
   // consumers (the canvas scene) read it inside their own render loop.
   const progressRef = useRef(0);
+  const lenisRef = useRef(null);
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const previousPathname = useRef(pathname);
 
   // Function to update the 'ref' property
   const updateRef = (newRef) => {
@@ -63,6 +69,7 @@ export function Scroll({ children }) {
 
     updateRef(content.current);
     updateLenis(lenis);
+    lenisRef.current = lenis;
     if (import.meta.env.DEV) window.__lenis = lenis;
 
     lenis.on("scroll", ({ progress }) => {
@@ -70,15 +77,30 @@ export function Scroll({ children }) {
       progressRef.current = progress; // Then publish the custom progress
     });
 
-    gsap.ticker.add((time) => lenis.raf(time * 4000));
+    const raf = (time) => lenis.raf(time * 4000);
+    gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
     ScrollTrigger.defaults({ scroller: wrapper.current });
     window.addEventListener("resize", resize);
     return () => {
       window.removeEventListener("resize", resize);
+      // The ticker callback kept driving a destroyed Lenis instance.
+      gsap.ticker.remove(raf);
+      lenisRef.current = null;
       lenis.destroy();
     };
   }, []);
+
+  // Every route is a page of its own, so a client-side navigation has to
+  // start at the top. The nav links scroll to the top themselves, but the
+  // browser's back and forward buttons do not: the new route kept the
+  // previous scroll offset and landed the visitor at the bottom of a short
+  // page instead of its start.
+  useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    lenisRef.current?.scrollTo(0, { immediate: true, force: true });
+  }, [pathname]);
 
   // Stable context value: it only changes when Lenis or the scroll element
   // are published, never on scroll.
