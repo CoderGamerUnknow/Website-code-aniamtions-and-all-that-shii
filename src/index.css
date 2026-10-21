@@ -137,30 +137,76 @@ body {
   width: 100%;
   bottom: 0;
   left: 0;
-  background-image: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(118, 185, 0, 0.1) 100%
-  );
-  border-top: 2px solid rgba(118, 185, 0, 0.4);
+  /* Opaque and above the fixed SHOP NOW overlay so the disclaimer can never
+     be washed out by the CTA while it fades out. */
+  z-index: 300;
+  background-image:
+    radial-gradient(
+      ellipse 70% 90% at 50% 0%,
+      rgba(118, 185, 0, 0.16),
+      transparent 70%
+    ),
+    linear-gradient(180deg, #04070a 0%, #020403 100%);
+  border-top: 1px solid rgba(118, 185, 0, 0.45);
   background-repeat: no-repeat;
   background-size: cover;
-  padding: 0 0 4rem 0;
+  padding: 3rem 1.5rem 3rem 1.5rem;
   text-align: center;
-  animation: fadeIn 5s linear forwards;
 }
-.footer__title {
-  transform: translateY(2.5rem);
+.footer__inner {
+  max-width: 78rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+}
+.footer__eyebrow {
   font-family: "Rajdhani", sans-serif;
   font-weight: 700;
-  font-size: 2rem;
-  letter-spacing: 0.12em;
+  font-size: 1.35rem;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   color: #b8ff3d;
 }
-.footer__paragraph {
-  transform: translateY(4rem);
-  color: rgba(255, 255, 255, 0.82);
+.footer__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem 2rem;
+  text-align: left;
+}
+.footer__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.footer__blockTitle {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #9fe870;
+}
+.footer__block p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: rgba(234, 255, 208, 0.6);
+}
+.footer__note {
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: rgba(234, 255, 208, 0.5);
+  border-top: 1px solid rgba(118, 185, 0, 0.18);
+  padding-top: 1.2rem;
+}
+.footer__link {
+  color: #b8ff3d;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(184, 255, 61, 0.45);
+}
+.footer__link:hover {
+  color: #04120a;
+  background-color: #b8ff3d;
 }
 
 #v0 {
@@ -310,9 +356,25 @@ html.lenis {
   }
 }
 
+@media (min-width: 700px) {
+  .footer__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Keeps the copy clear of the fixed eye / scroll-to-top control. */
+  .footer__inner {
+    padding-right: 7rem;
+  }
+}
+
 @media (min-width: 900px) {
   .footer {
-    padding: 5rem 8rem 5rem 8rem;
+    padding: 3.5rem 2.5rem 3rem 2.5rem;
+  }
+  .footer__grid {
+    gap: 1.6rem 2.4rem;
+  }
+  .footer__block p {
+    font-size: 0.85rem;
   }
 }
 
@@ -331,7 +393,14 @@ html.lenis {
     display: block;
   }
   .footer {
-    padding: 5rem 15rem 5rem 15rem;
+    padding: 3.5rem 3rem 3rem 3rem;
+  }
+  .footer__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.8rem 2.6rem;
+  }
+  .footer__inner {
+    padding-right: 11rem;
   }
 
   @keyframes iris {
@@ -360,6 +429,6 @@ html.lenis {
 
 @media (min-width: 1500px) {
   .footer {
-    padding: 5rem 19rem 5rem 10rem;
+    padding: 4rem 4rem 3.5rem 4rem;
   }
 }

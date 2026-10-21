@@ -6,7 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 // progress. Also sizes the scroll container exactly like the original
 // video-duration-driven layout (10120px).
 
-const TOTAL_SCROLL_HEIGHT = "10120px";
+export const SCENE_SCROLL_HEIGHT = 10120;
 
 const GREEN = [118, 185, 0];
 
@@ -122,7 +122,11 @@ export function VideoBackground({ videoRef, scroll }) {
   useEffect(() => {
     const scrollSection = contentRef;
     if (!scrollSection) return;
-    scrollSection.style.height = TOTAL_SCROLL_HEIGHT;
+
+    // The disclaimer sits after the scene, so reserve its height as well;
+    // otherwise the end of the footer is unreachable on shorter viewports.
+    const footer = document.querySelector("[data-footer]");
+    scrollSection.style.height = `${SCENE_SCROLL_HEIGHT + (footer?.offsetHeight || 0)}px`;
     ScrollTrigger.refresh();
     return () => {
       scrollSection.style.height = "auto";

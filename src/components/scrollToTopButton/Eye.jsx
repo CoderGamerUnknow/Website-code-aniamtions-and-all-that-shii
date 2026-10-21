@@ -16,6 +16,8 @@ export function Eye() {
 
   useEffect(() => {
     const updateEyePosition = () => {
+      if (!eyeRef.current) return;
+
       eye.x.set(eyeRef.current.offsetLeft + eyeRef.current.offsetWidth / 2);
       eye.y.set(eyeRef.current.offsetTop + eyeRef.current.offsetHeight / 2);
     };
@@ -29,33 +31,55 @@ export function Eye() {
     };
   }, [eyeRef]);
 
-  window.onmouseout = window.onmouseleave = () => {
-    irisRef.current.setAttribute("class", "iris anim");
-  };
-
-  window.ontouchend = (e) => {
-    if (e.touches.length === 0) window.onmouseout();
-  };
-
-  window.onmousemove = (e) => {
-    irisRef.current.setAttribute("class", "iris");
-    const m = {
-      x: e.clientX - eye.x.get(),
-      y: e.clientY - eye.y.get(),
+  // Pointer tracking is registered inside an effect so the listeners are
+  // cleaned up with the component (the previous version left them attached
+  // globally and crashed on an unmounted ref).
+  useEffect(() => {
+    const setIrisClass = (value) => {
+      if (irisRef.current) irisRef.current.setAttribute("class", value);
     };
-    const dist = Math.min(
-      60,
-      Math.max(-60, Math.sqrt(m.x ** 2 + m.y ** 2) / 6)
-    );
-    const dir = Math.atan2(m.x, m.y);
-    const rx = dist * -Math.cos(dir);
-    const ry = dist * Math.sin(dir);
 
-    irisRef.current.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(${size}px) scale(0.8)`;
-  };
+    const handleMove = (event) => {
+      const point = event.touches ? event.touches[0] : event;
+      if (!point || !irisRef.current || !eyeRef.current) return;
 
-  window.ontouchmove = window.ontouchstart = (e) =>
-    window.onmousemove(e.touches[0]);
+      setIrisClass("iris");
+
+      const m = {
+        x: point.clientX - eye.x.get(),
+        y: point.clientY - eye.y.get(),
+      };
+      const dist = Math.min(
+        60,
+        Math.max(-60, Math.sqrt(m.x ** 2 + m.y ** 2) / 6)
+      );
+      const dir = Math.atan2(m.x, m.y);
+      const rx = dist * -Math.cos(dir);
+      const ry = dist * Math.sin(dir);
+
+      irisRef.current.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(${size}px) scale(0.8)`;
+    };
+
+    const handleLeave = () => setIrisClass("iris anim");
+
+    const handleTouchEnd = (event) => {
+      if (event.touches.length === 0) handleLeave();
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseout", handleLeave);
+    window.addEventListener("touchstart", handleMove, { passive: true });
+    window.addEventListener("touchmove", handleMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseout", handleLeave);
+      window.removeEventListener("touchstart", handleMove);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [size, eye.x, eye.y]);
 
   return (
     <motion.div ref={eyeRef} className="eye">
@@ -64,7 +88,7 @@ export function Eye() {
         className="iris anim"
         style={{ transformStyle: "preserve-3d", pointerEvents: "auto" }}
         whileHover={{ backgroundImage: "url('/inkArrowUp.png')" }}
-        onClick={() => lenis.scrollTo("top", { lerp: 0.02 })}
+        onClick={() => lenis && lenis.scrollTo("top", { lerp: 0.02 })}
       />
     </motion.div>
   );

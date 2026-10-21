@@ -58,30 +58,32 @@ export const animateOutNow = (outNowRef, scrollRef) => {
 };
 
 export const animateShopNow = (shopNowRef, scrollRef) => {
-  // CTA window 7400-8300px: fully in before the footer scrolls into view,
-  // fully out again by the time the disclaimer is readable.
+  // CTA: rises in at 7400px, holds through the last stretch of the grid scene
+  // and fades just as the disclaimer panel slides up over it. Keeping it on
+  // screen until the opaque footer arrives avoids a long empty gap at the end.
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: scrollRef,
       start: "7400px",
-      end: "+=900px",
+      // Ends exactly as the disclaimer panel scrolls into view, so the overlay
+      // is never left ghosting on top of the footer text on any viewport.
+      endTrigger: () => document.querySelector("[data-footer]"),
+      end: "top bottom",
       scrub: 1,
     },
   });
-  tl.addLabel("start")
-    .to(shopNowRef.current, {
-      display: "block",
-      autoAlpha: 1,
-      duration: 1,
-      ease: "expo.inOut",
-    })
-    .addLabel("end")
+  tl.to(shopNowRef.current, {
+    display: "block",
+    autoAlpha: 1,
+    duration: 1,
+    ease: "expo.out",
+  })
+    .to(shopNowRef.current, { autoAlpha: 1, duration: 2 })
     .to(shopNowRef.current, {
       autoAlpha: 0,
       duration: 1,
-      ease: "expo.inOut",
-    })
-    .pause();
+      ease: "power2.inOut",
+    });
 
   return tl;
 };
