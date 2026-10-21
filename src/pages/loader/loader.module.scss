@@ -1,0 +1,303 @@
+.loader {
+  font-family: "Orbitron", sans-serif;
+  color: white;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  overflow: hidden;
+  z-index: 10;
+  background: rgb(2, 16, 4, 1);
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(2, 16, 4, 1) 22%,
+    rgba(3, 26, 6, 1) 100%
+  );
+
+  &__wrapper {
+    height: 100%;
+    width: 100%;
+    position: fixed;
+    overflow: hidden;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  &__titleWrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  &__titleEnglish {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 20;
+  }
+
+  &__title {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 7rem;
+    z-index: 20;
+    filter: drop-shadow(0px -20px 10px #76b900)
+      drop-shadow(0px -30px 10px #b8ff3d);
+  }
+
+  &__titleEnglishSecond {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 20;
+  }
+
+  &__titleSecond {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 7rem;
+    z-index: 20;
+    transform: translateY(120vh);
+    filter: drop-shadow(0px -40px 10px #76b900)
+      drop-shadow(0px -40px 10px #b8ff3d);
+  }
+
+  &__progressWrapper {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 5vh;
+    z-index: 15;
+  }
+
+  &__progress {
+    height: 100%;
+    width: 100vw;
+    background-image: linear-gradient(90deg, #5ec900 0%, #b8ff3d 100%);
+    transform: translateX(-100vw);
+    transform-origin: left center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  &__progressNumber {
+    position: absolute;
+    left: -5vw;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    white-space: nowrap;
+    font-size: 1.3rem;
+  }
+
+  &__wheel {
+    position: fixed;
+    top: 50%;
+    left: 48%;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 15;
+
+    &__flames {
+      position: relative;
+      opacity: 1;
+
+      & div {
+        position: absolute;
+        transform: translate(-50%, -50%);
+
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        animation: flameWheel_rotate 20s infinite linear;
+
+        & img {
+          border-radius: 50%;
+          filter: sepia(1) saturate(6) hue-rotate(35deg) brightness(1.05)
+            drop-shadow(0px 0px 10px rgba(118, 185, 0, 0.9))
+            drop-shadow(0px 0px 15px rgba(184, 255, 61, 0.55));
+          transform: translateY(-5px);
+          scale: 400%;
+        }
+      }
+      & div:nth-child(1) {
+        animation-delay: 0s;
+      }
+
+      & div:nth-child(2) {
+        animation-delay: -2.5s;
+      }
+      & div:nth-child(3) {
+        animation-delay: -5s;
+      }
+      & div:nth-child(4) {
+        animation-delay: -7.5s;
+      }
+      & div:nth-child(5) {
+        animation-delay: -10s;
+      }
+      & div:nth-child(6) {
+        animation-delay: -12.5s;
+      }
+      & div:nth-child(7) {
+        animation-delay: -15s;
+      }
+      & div:nth-child(8) {
+        animation-delay: -17.5s;
+      }
+    }
+  }
+
+  @media (min-width: 900px) and (max-width: 1100px) {
+    &__title {
+      font-size: 10rem;
+      gap: 0rem;
+      filter: drop-shadow(0px -20px 10px #76b900)
+        drop-shadow(0px -30px 10px #b8ff3d);
+    }
+    &__titleEnglish {
+      gap: 2rem;
+    }
+    &__titleSecond {
+      font-size: 8rem;
+      gap: 0rem;
+    }
+    &__titleEnglishSecond {
+      gap: 2rem;
+    }
+    &__progressNumber {
+      font-size: 1.7rem;
+    }
+    &__wheel {
+      &__flames {
+        & div {
+          width: 60px;
+          height: 60px;
+          & img {
+            transform: translateY(-10px);
+          }
+        }
+      }
+    }
+  }
+
+  @media (min-width: 1100px) and (max-width: 1500px) {
+    &__title {
+      font-size: 14rem;
+      filter: drop-shadow(0px -20px 10px #76b900)
+        drop-shadow(0px -30px 10px #b8ff3d);
+    }
+    &__titleEnglish {
+      gap: 2rem;
+    }
+    &__titleSecond {
+      font-size: 14rem;
+    }
+    &__titleEnglishSecond {
+      gap: 2rem;
+    }
+    &__progressNumber {
+      font-size: 1.5rem;
+    }
+    &__wheel {
+      &__flames {
+        & div {
+          width: 70px;
+          height: 70px;
+          & img {
+            transform: translateY(-10px);
+          }
+        }
+      }
+    }
+  }
+
+  @media (min-width: 1500px) {
+    &__title {
+      font-size: 17rem;
+      gap: 2.5rem;
+      filter: drop-shadow(0px -40px 10px #76b900)
+        drop-shadow(0px -40px 10px #b8ff3d);
+    }
+    &__titleEnglish {
+      gap: 5rem;
+    }
+    &__titleSecond {
+      font-size: 17rem;
+      gap: 2.5rem;
+    }
+    &__titleEnglishSecond {
+      gap: 5rem;
+    }
+    &__progressNumber {
+      font-size: 3rem;
+    }
+    &__wheel {
+      &__flames {
+        & div {
+          width: 80px;
+          height: 80px;
+          & img {
+            transform: translateY(-10px);
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes flameWheel_rotate {
+  0% {
+    transform: rotate(0) translateX(120px) rotate(0);
+  }
+  100% {
+    transform: rotate(360deg) translateX(120px) rotate(-360deg);
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1500px) {
+  @keyframes flameWheel_rotate {
+    0% {
+      transform: rotate(0) translateX(200px) rotate(0);
+    }
+    100% {
+      transform: rotate(360deg) translateX(200px) rotate(-360deg);
+    }
+  }
+}
+
+@media (min-width: 1500px) {
+  @keyframes flameWheel_rotate {
+    0% {
+      transform: rotate(0) translateX(300px) rotate(0);
+    }
+    100% {
+      transform: rotate(360deg) translateX(300px) rotate(-360deg);
+    }
+  }
+}

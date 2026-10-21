@@ -1,43 +1,41 @@
-<p align="center">
-  <a href="https://jjk-promo.vercel.app/" target="blank"><img src="https://raw.githubusercontent.com/EduardStroescu/PubImages/main/WebsiteImages/jjk.jpg" alt="JJK Promo Preview" /></a>
-</p>
+# NVIDIA — GeForce RTX Promo
 
-# JJK Promo
+A fan-made, animation-rich promotional website celebrating **NVIDIA**, **GeForce RTX**
+and the technology behind modern gaming and AI (ray tracing, DLSS 4, CUDA and the
+AI data center era).
 
-#@ Introduction
+> Not affiliated with, endorsed by or sponsored by NVIDIA. All trademarks and product
+> names belong to their respective owners.
 
-This website is dedicated to celebrating the anime and manga series "Jujutsu Kaisen."
-My aim is to provide information and promote the series. I strive to respect the original creators and their work.
+## What's inside
 
-### _DISCLAIMER:_
+- **Home** — loader with progress bar and fire wheel, clip-reveal hero, a scroll-scrubbed
+  canvas scene (green perspective grid + data motes), timed subtitle choreography and
+  CTA buttons.
+- **Technology** — the NVIDIA story page with reveal animations.
+- **Products** — filterable product gallery (RTX 50 / RTX 40 / AI & Data Center / The Tech
+  Inside) with parametric SVG artwork (spinning GPU fans, racks, chips) and an animated
+  detail overlay.
+- Custom **magnetic cursor**, **eye scroll-to-top button**, Lenis smooth scrolling,
+  GSAP ScrollTrigger timelines, Framer Motion springs.
 
-> _I do not own the copyrights or any intellectual property associated with Jujutsu Kaisen. All images, characters, logos, and other content are the property of their respective owners, including but not limited to Gege Akutami, Shueisha, MAPPA, and other related entities. If you are the rightful owner of any content featured on this website and wish for it to be removed or credited differently, please contact me, and I will promptly address your concerns._
+## Stack
 
-## Overview
+Vite · React 18 · SCSS modules · Tailwind · GSAP (+ ScrollTrigger) · Framer Motion ·
+Lenis · TanStack Router · Orbitron + Rajdhani (self-hosted, OFL)
 
-The technical aim of this project is to experiment within an animation rich environment while promoting a product.
-
-I have created a custom "magnetic" cursor and scroll to top button(which follows the mouse position) using framer-motion. To minimize bundle size gsap could also be used as an alternative, as it is already included in the project for its usage of timelines and ScrolLTrigger, but due to the cursor looking better with spring animated values I also went with framer-motion.
-
-## Technologies Used
-
-- Vite-React
-- SCSS
-- [studio-freight/lenis](https://github.com/studio-freight/lenis)
-- [tanstack/react-router](https://github.com/TanStack/router)
-- [framer-motion](https://github.com/framer/motion)
-- [gsap](https://github.com/greensock/GSAP)
-
-### Installation && Local Development
+## Development
 
 ```bash
-git clone https://github.com/EduardStroescu/JJK-promo.git
 npm install
-npm run dev
+npm run dev      # start dev server
+npm run build    # production build
+npm run lint     # eslint
 ```
 
-### To prepare for production/minify
+## Credits
 
-```bash
-npm run build
-```
+Based on the animation starter [JJK-promo](https://github.com/EduardStroescu/JJK-promo)
+by **Eduard Stroescu** — all animation architecture (loader, magnetic cursor, scroll
+choreography) originates from that project. Content and theming reworked for this NVIDIA
+concept site.

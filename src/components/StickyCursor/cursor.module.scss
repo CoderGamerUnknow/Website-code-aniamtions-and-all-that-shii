@@ -1,0 +1,22 @@
+.cursor {
+  position: fixed;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border-color: rgba($color: #ffffff, $alpha: 1);
+  box-shadow: 2px -3px 41px -1px rgba(255, 255, 255, 1);
+  border-width: 1px;
+  z-index: 900;
+  mix-blend-mode: difference;
+  background-color: #76b900;
+  pointer-events: none;
+  opacity: 0;
+
+  &__cursorFire {
+    position: fixed;
+    scale: 500%;
+    transform: translateY(-10px);
+    filter: sepia(1) saturate(6) hue-rotate(35deg) brightness(1.05)
+      drop-shadow(0px 0px 10px rgba(118, 185, 0, 0.9));
+  }
+}

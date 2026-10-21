@@ -1,0 +1,30 @@
+.transition_loader {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background-image: linear-gradient(
+    135deg,
+    #020501 0%,
+    #0d2404 55%,
+    #2a5c00 100%
+  );
+  /* background-position: center; */
+  /* background-repeat: no-repeat; */
+  background-size: cover;
+  mask: url("/transition_sprite.webp");
+  mask-size: 2300% 100%;
+  animation: ani 0.7s steps(22) 0.3s both;
+  z-index: 20;
+  pointer-events: none;
+}
+@keyframes ani {
+  0% {
+    mask-position: 0 0;
+  }
+  100% {
+    mask-position: 100% 0;
+    display: none;
+  }
+}

@@ -12,10 +12,9 @@ module.exports = {
   settings: { react: { version: '18.2' } },
   plugins: ['react-refresh'],
   rules: {
-    // This is an animation-heavy prototype: components receive GSAP timelines
-    // and refs as props, which prop-types cannot express cleanly. Re-enable if
-    // the project moves to TypeScript or adds runtime prop validation.
-    'react/prop-types': 'off',
-    'react-refresh/only-export-components': 'off',
+    'react-refresh/only-export-components': [
+      'warn',
+      { allowConstantExport: true },
+    ],
   },
 }
