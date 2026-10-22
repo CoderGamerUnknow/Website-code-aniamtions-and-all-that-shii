@@ -1,87 +1,72 @@
 import { gsap } from "gsap";
 
-export const introAnimation = (wordGroupsRef) => {
-  const tl = gsap.timeline();
-  tl.to(
-    wordGroupsRef.current,
-    {
-      transform: "translateY(-120vh)",
-      duration: 3,
-      ease: "power3.inOut",
-    },
-    "+4"
-  );
+// The intro is authored as one continuous piece rather than a set of gaps.
+// The earlier version handed `animateTitleIn` to the timeline uncalled (`add`
+// received the function, not the timeline it returns), so the title played on
+// the global timeline while the loader timeline still started with a four
+// second hole: the screen sat frozen and then jumped straight to the exit.
 
-  return tl;
-};
+export const TITLE_IN_DURATION = 1.8;
+export const PROGRESS_DURATION = 3;
+export const INTRO_START = 2.8;
+export const INTRO_DURATION = 1.7;
 
 export const animateTitleIn = () => {
   const tl = gsap.timeline({
-    defaults: {
-      ease: "expo.inOut",
-      duration: 2,
-    },
+    defaults: { ease: "expo.out", duration: 1.1 },
   });
 
   tl.fromTo(
     "[data-title-first]",
-    {
-      x: 100,
-      autoAlpha: 0,
-    },
-    {
-      x: 0,
-      autoAlpha: 1,
-    },
-    "<"
+    { x: 90, autoAlpha: 0 },
+    { x: 0, autoAlpha: 1, duration: 1.2 },
+    0
   )
     .fromTo(
       "[data-title-second]",
-      {
-        x: -100,
-        autoAlpha: 0,
-      },
-      {
-        x: 0,
-        autoAlpha: 1,
-      },
-      "0"
+      { x: -90, autoAlpha: 0 },
+      { x: 0, autoAlpha: 1, duration: 1.2 },
+      0
     )
     .fromTo(
       "[data-title-last]",
-      {
-        y: -100,
-        autoAlpha: 0,
-      },
-      {
-        y: 0,
-        autoAlpha: 1,
-      },
-      "+1"
+      { y: -60, autoAlpha: 0 },
+      { y: 0, autoAlpha: 1, duration: 1.2 },
+      0.18
     )
-    .to(
+    .fromTo(
       "[data-flames]",
-      {
-        opacity: 1,
-        duration: 3,
-      },
-      "+2"
+      { opacity: 0 },
+      { opacity: 1, duration: 1.4, ease: "power1.out" },
+      0.2
     );
+
+  return tl;
+};
+
+export const introAnimation = (wordGroupsRef) => {
+  const tl = gsap.timeline();
+
+  // The second copy of the title starts one screen below, so the slide lifts
+  // the first copy out and brings the second one through: the wordmark reads
+  // as endless rather than as a single block sliding off.
+  tl.to(wordGroupsRef.current, {
+    y: "-120vh",
+    duration: INTRO_DURATION,
+    ease: "power3.inOut",
+  });
 
   return tl;
 };
 
 export const animateLoaderOut = (loaderRef) => {
   const tl = gsap.timeline();
-  tl.to(
-    loaderRef.current,
-    {
-      "clip-path": "polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)",
-      duration: 1,
-      ease: "expo.inOut",
-    },
-    "<"
-  );
+
+  tl.to(loaderRef.current, {
+    clipPath: "polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)",
+    duration: 0.9,
+    ease: "expo.inOut",
+  });
 
   return tl;
 };
@@ -89,37 +74,31 @@ export const animateLoaderOut = (loaderRef) => {
 export const progressAnimation = (progressRef, progressNumberRef) => {
   const tl = gsap.timeline();
 
-  tl.to(progressRef.current, {
-    x: "0vw",
-    duration: 5,
-    ease: "power3.inOut",
-  })
-    .to(
+  tl.fromTo(
+    progressRef.current,
+    { x: "-100vw" },
+    { x: "0vw", duration: PROGRESS_DURATION, ease: "power2.inOut" },
+    0
+  )
+    .fromTo(
       progressNumberRef.current,
-      {
-        x: "100vw",
-        duration: 5,
-        ease: "power3.inOut",
-      },
-      "<"
+      { x: "-5vw" },
+      { x: "100vw", duration: PROGRESS_DURATION, ease: "power2.inOut" },
+      0
     )
-    .to(
+    .fromTo(
       progressNumberRef.current,
+      { textContent: 0 },
       {
-        textContent: "100",
-        duration: 5,
+        textContent: 100,
+        duration: PROGRESS_DURATION,
+        ease: "power2.inOut",
         roundProps: "textContent",
       },
-      "<"
+      0
     )
-    .to(progressNumberRef.current, {
-      y: 24,
-      autoAlpha: 0,
-    })
-    .to(progressRef.current, {
-      y: "100%",
-      duration: 1,
-    });
+    .to(progressNumberRef.current, { y: 20, autoAlpha: 0, duration: 0.4 }, ">")
+    .to(progressRef.current, { y: "100%", duration: 0.8 }, "<");
 
   return tl;
 };

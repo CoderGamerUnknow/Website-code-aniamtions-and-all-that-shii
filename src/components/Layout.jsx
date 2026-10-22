@@ -8,6 +8,7 @@ import { ScrollToTopButton } from "./scrollToTopButton/ScrollToTopButton";
 import { LandscapePrompt } from "./LandscapePrompt";
 import { useScrollContext } from "./Scroll";
 import { SCENE_SCROLL_HEIGHT } from "./VideoBackground";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 // Below this width the custom cursor is more in the way than it helps.
 const CURSOR_MIN_WIDTH = 1280;
@@ -15,6 +16,8 @@ const CURSOR_MIN_WIDTH = 1280;
 export function Layout({ children }) {
   const [loaderFinished, setLoaderFinished] = useState(false);
   const [timeline, setTimeline] = useState(null);
+  const reducedMotion = useReducedMotion();
+  const { ref: scrollRef } = useScrollContext();
   // The custom cursor is only meant for wide screens. The width used to be
   // read while rendering, so a window that was resized below the threshold
   // kept the cursor on screen.
@@ -41,17 +44,44 @@ export function Layout({ children }) {
     return () => context.revert();
   }, []);
 
+  // The intro is decoration, not a gate: anyone who has seen it once, or who
+  // came back for something else, can dismiss it with a click or any key.
+  useEffect(() => {
+    if (!timeline) return undefined;
+    const skip = () => {
+      if (timeline.progress() < 1) timeline.progress(1);
+    };
+    window.addEventListener("keydown", skip);
+    window.addEventListener("pointerdown", skip);
+    return () => {
+      window.removeEventListener("keydown", skip);
+      window.removeEventListener("pointerdown", skip);
+    };
+  }, [timeline]);
+
+  // With reduced motion the animated intro loader is skipped. The page is
+  // still mounted through the same gate, because the scroll context publishes
+  // its element from an effect: mounting the page before that happens would
+  // build the scroll triggers against the wrong element.
+  useEffect(() => {
+    if (!reducedMotion || !scrollRef) return undefined;
+    const id = setTimeout(() => setLoaderFinished(true), 40);
+    return () => clearTimeout(id);
+  }, [reducedMotion, scrollRef]);
+
   return (
     <>
       {loaderFinished ? (
         <>
-          {isWideViewport && <StickyCursor />}
+          {/* The custom cursor is a decorative motion effect, so it is left
+              out entirely when less motion was asked for. */}
+          {isWideViewport && !reducedMotion && <StickyCursor />}
           <ScrollToTopButton />
           <NavBar />
           {children}
           <Footer />
         </>
-      ) : (
+      ) : reducedMotion ? null : (
         <Loader timeline={timeline} />
       )}
       <LandscapePrompt />
