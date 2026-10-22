@@ -10,11 +10,20 @@ import Lenis from "@studio-freight/lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useRouterState } from "@tanstack/react-router";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Dev-only debug hook (stripped from production builds).
-if (import.meta.env.DEV) {
+// The animation audit inspects GSAP and ScrollTrigger from the running page.
+// They are always available in development. In a production build they are
+// only exposed when the page is opened with ?audit=1, so the audit can check
+// the real bundle without handing the handles to every visitor.
+const AUDIT_ENABLED =
+  import.meta.env.DEV ||
+  (typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("audit"));
+
+if (AUDIT_ENABLED) {
   window.__gsap = gsap;
   window.__ScrollTrigger = ScrollTrigger;
   window.__loadNonce = Date.now();
@@ -35,6 +44,14 @@ export function Scroll({ children }) {
   // consumers (the canvas scene) read it inside their own render loop.
   const progressRef = useRef(0);
   const lenisRef = useRef(null);
+  const reducedMotion = useReducedMotion();
+  // The smooth scroll is decided once, when Lenis is created. Reading the
+  // preference through a ref keeps a later change from tearing the scroller
+  // down and losing the scroll position.
+  const reducedMotionRef = useRef(reducedMotion);
+  useEffect(() => {
+    reducedMotionRef.current = reducedMotion;
+  }, [reducedMotion]);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -55,14 +72,17 @@ export function Scroll({ children }) {
   };
 
   useEffect(() => {
+    const reduced = reducedMotionRef.current;
     const lenis = new Lenis({
       wrapper: wrapper.current,
       content: content.current,
       direction: "vertical", // vertical, horizontal
       gestureDirection: "vertical", // vertical, horizontal, both
-      duration: 5,
-      smoothWheel: true,
-      smoothTouch: true,
+      duration: reduced ? 0 : 5,
+      // The eased scroll is the main source of motion on the site, so it is
+      // switched off completely when less motion was asked for.
+      smoothWheel: !reduced,
+      smoothTouch: !reduced,
       touchMultiplier: 1,
       infinite: false,
     });
@@ -70,7 +90,7 @@ export function Scroll({ children }) {
     updateRef(content.current);
     updateLenis(lenis);
     lenisRef.current = lenis;
-    if (import.meta.env.DEV) window.__lenis = lenis;
+    if (AUDIT_ENABLED) window.__lenis = lenis;
 
     lenis.on("scroll", ({ progress }) => {
       ScrollTrigger.update(); // Update ScrollTrigger first

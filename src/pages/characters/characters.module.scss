@@ -104,6 +104,22 @@
     }
   }
 
+  // The mask wipe on a product card is a decorative reveal. With reduced
+  // motion the card keeps its resting look and the wipe is left out, so
+  // nothing slides across the card while the pointer moves over it.
+  @media (prefers-reduced-motion: reduce) {
+    &__container {
+      &__individualCharacter {
+        &__background {
+          &:hover,
+          &:not(:hover) {
+            animation: none;
+          }
+        }
+      }
+    }
+  }
+
   @media (min-width: 900px) and (max-width: 1100px) {
     padding-bottom: 20rem;
 

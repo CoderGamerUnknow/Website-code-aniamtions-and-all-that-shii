@@ -200,6 +200,7 @@ export function StickyCursor() {
       }}
       className={styles.cursor}
       ref={cursor}
+      data-sticky-cursor=""
     >
       <motion.img
         className={styles.cursor__cursorFire}

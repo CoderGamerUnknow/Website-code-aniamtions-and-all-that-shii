@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 // Scroll-scrubbed canvas scene that replaces the original video background:
 // a perspective grid flying through a green data-scape, driven by scroll
@@ -124,6 +125,7 @@ function buildBackground(width, height) {
 export function VideoBackground({ videoRef, scroll }) {
   const canvasRef = useRef(null);
   const { ref: contentRef, progressRef } = scroll;
+  const reducedMotion = useReducedMotion();
 
   // Size the scroll container like the original video-duration-driven layout.
   useEffect(() => {
@@ -150,17 +152,8 @@ export function VideoBackground({ videoRef, scroll }) {
     let frameId;
     let dpr = 1;
     let background = null;
-    const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(window.innerWidth * dpr);
-      canvas.height = Math.round(window.innerHeight * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      background = buildBackground(canvas.width, canvas.height);
-    };
-    resize();
-    window.addEventListener("resize", resize);
 
-    const loop = (time) => {
+    const draw = (time) => {
       const width = window.innerWidth;
       const height = window.innerHeight;
 
@@ -171,15 +164,38 @@ export function VideoBackground({ videoRef, scroll }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       drawScene(ctx, width, height, time, progressRef?.current ?? 0);
+    };
+
+    const resize = () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      background = buildBackground(canvas.width, canvas.height);
+      // A still frame has to be redrawn when the canvas is resized.
+      if (reducedMotion) draw(0);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const loop = (time) => {
+      draw(time);
       frameId = requestAnimationFrame(loop);
     };
-    frameId = requestAnimationFrame(loop);
+
+    if (reducedMotion) {
+      // The scene runs on its own, without the visitor asking for it. With
+      // reduced motion a single frame is drawn and the loop stays stopped.
+      draw(0);
+    } else {
+      frameId = requestAnimationFrame(loop);
+    }
 
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
     };
-  }, [progressRef]);
+  }, [progressRef, reducedMotion]);
 
   return (
     <div

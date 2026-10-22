@@ -78,7 +78,6 @@ body {
   top: 0;
   left: 0;
   padding: 2.5rem 0;
-  animation: fadeIn 3s linear forwards;
 
   font-size: 1.875rem;
   line-height: 2.25rem;
@@ -108,6 +107,11 @@ body {
   pointer-events: auto;
   transform: translate3d(0, -60%, 0);
   color: #eaffd0;
+  /* The intro fade belongs to the pill, not to the wrapper. GSAP drives the
+     wrapper's opacity and visibility when the bar hides, and a CSS animation
+     on that same element outranks the inline styles GSAP writes - the
+     animation pinned the opacity at 1 and the fade-out never happened. */
+  animation: fadeIn 3s linear forwards;
 }
 
 .navbar a {
@@ -442,5 +446,23 @@ html.lenis {
 @media (min-width: 1500px) {
   .footer {
     padding: 4rem 4rem 3.5rem 4rem;
+  }
+}
+
+/* Visitors who asked for less motion get the same pages without the loops
+   that run on their own: the spinning fans, the breathing iris and the
+   intro fade of the navigation pill. Everything that reacts to a click or
+   to the scroll position stays in place. */
+@media (prefers-reduced-motion: reduce) {
+  .gpuFan {
+    animation: none;
+  }
+
+  .eye .iris.anim {
+    animation: none;
+  }
+
+  .navbar {
+    animation: none;
   }
 }

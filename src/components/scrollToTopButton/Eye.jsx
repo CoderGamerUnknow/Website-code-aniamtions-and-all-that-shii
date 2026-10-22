@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue } from "framer-motion";
 import { useScrollContext } from "../Scroll";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
 
 export function Eye() {
   const { lenis } = useScrollContext();
+  const reducedMotion = useReducedMotion();
   const eyeRef = useRef();
   const irisRef = useRef();
 
@@ -51,7 +53,11 @@ export function Eye() {
   // globally and crashed on an unmounted ref).
   useEffect(() => {
     const setIrisClass = (value) => {
-      if (irisRef.current) irisRef.current.setAttribute("class", value);
+      // Writing the attribute on every mouse move made the browser recalc
+      // the style of the iris dozens of times a second for no reason.
+      if (irisRef.current && irisRef.current.getAttribute("class") !== value) {
+        irisRef.current.setAttribute("class", value);
+      }
     };
 
     const handleMove = (event) => {
@@ -75,34 +81,53 @@ export function Eye() {
       irisRef.current.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(${size}px) scale(0.8)`;
     };
 
-    const handleLeave = () => setIrisClass("iris anim");
+    const handleLeave = () =>
+      setIrisClass(reducedMotion ? "iris" : "iris anim");
+
+    // The idle "breathing" animation is only restored when the pointer
+    // leaves the window. A plain `mouseout` also fires every time the
+    // pointer crosses an element boundary, so listening to it restarted the
+    // animation on every crossing and left the iris without it for good
+    // after the very first move.
+    const handleWindowLeave = (event) => {
+      if (!event.relatedTarget) handleLeave();
+    };
 
     const handleTouchEnd = (event) => {
       if (event.touches.length === 0) handleLeave();
     };
 
     window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseout", handleLeave);
+    window.addEventListener("mouseout", handleWindowLeave);
+    document.addEventListener("mouseleave", handleLeave);
     window.addEventListener("touchstart", handleMove, { passive: true });
     window.addEventListener("touchmove", handleMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd);
 
     return () => {
       window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseout", handleLeave);
+      window.removeEventListener("mouseout", handleWindowLeave);
+      document.removeEventListener("mouseleave", handleLeave);
       window.removeEventListener("touchstart", handleMove);
       window.removeEventListener("touchmove", handleMove);
       window.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [size, eye.x, eye.y]);
+  }, [size, eye.x, eye.y, reducedMotion]);
 
   return (
     <motion.div ref={eyeRef} className="eye">
       <motion.div
         ref={irisRef}
-        className="iris anim"
+        className={reducedMotion ? "iris" : "iris anim"}
         style={{ transformStyle: "preserve-3d", pointerEvents: "auto" }}
-        onClick={() => lenis && lenis.scrollTo("top", { lerp: 0.02 })}
+        onClick={() =>
+          // The eased scroll back to the top is a long trip across the page.
+          lenis &&
+          lenis.scrollTo(
+            "top",
+            reducedMotion ? { immediate: true } : { lerp: 0.02 }
+          )
+        }
       />
     </motion.div>
   );
