@@ -149,9 +149,16 @@ export function VideoBackground({ videoRef, scroll }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let frameId;
+    let frameId = 0;
+    let running = false;
     let dpr = 1;
     let background = null;
+    // Two independent reasons to stand still: the scene cannot be seen while
+    // the tab is in the background, and it cannot be seen while the opaque
+    // footer covers it. Drawing either time is spent on nothing, and the
+    // scene is the only thing on the site that animates on its own.
+    let hidden = document.hidden;
+    let covered = false;
 
     const draw = (time) => {
       const width = window.innerWidth;
@@ -183,17 +190,79 @@ export function VideoBackground({ videoRef, scroll }) {
       frameId = requestAnimationFrame(loop);
     };
 
+    const startDrawing = () => {
+      if (running) return;
+      running = true;
+      frameId = requestAnimationFrame(loop);
+    };
+
+    const stopDrawing = () => {
+      running = false;
+      cancelAnimationFrame(frameId);
+    };
+
+    const syncDrawing = () => {
+      if (hidden || covered) stopDrawing();
+      else startDrawing();
+    };
+
+    const onVisibilityChange = () => {
+      hidden = document.hidden;
+      syncDrawing();
+    };
+
+    // The footer is opaque, but it only hides the scene on a viewport it is
+    // taller than. On a taller viewport a strip of the page stays visible
+    // above it, so the scene has to keep drawing. When the footer does cover
+    // the viewport, a trigger from its top hitting the top of the screen to
+    // its bottom is exactly "the viewport is inside the footer", and it
+    // follows the same scroller as the rest of the page.
+    const footer = document.querySelector("[data-footer]");
+    let occlusion = null;
+
+    const syncOcclusion = () => {
+      occlusion?.kill();
+      occlusion = null;
+      covered = false;
+
+      if (footer && footer.offsetHeight >= window.innerHeight) {
+        occlusion = ScrollTrigger.create({
+          trigger: footer,
+          start: "top top",
+          // The end of the trigger is exclusive, and the range ends exactly at
+          // the last scroll position: without the extra pixel the scene would
+          // start drawing again at the very bottom of the page, which is the
+          // one place it is always covered.
+          end: "bottom bottom-=1",
+          onToggle: (self) => {
+            covered = self.isActive;
+            syncDrawing();
+          },
+        });
+        covered = occlusion.isActive;
+      }
+
+      syncDrawing();
+    };
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("resize", syncOcclusion);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     if (reducedMotion) {
       // The scene runs on its own, without the visitor asking for it. With
       // reduced motion a single frame is drawn and the loop stays stopped.
       draw(0);
     } else {
-      frameId = requestAnimationFrame(loop);
+      syncOcclusion();
     }
 
     return () => {
-      cancelAnimationFrame(frameId);
+      stopDrawing();
+      occlusion?.kill();
       window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", syncOcclusion);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [progressRef, reducedMotion]);
 
