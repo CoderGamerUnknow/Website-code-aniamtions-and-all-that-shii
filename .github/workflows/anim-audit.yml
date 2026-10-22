@@ -1,0 +1,44 @@
+name: Animation audit
+
+# The audit drives a real browser against the production build. It fails the
+# job when an animation regresses: the bar stops fading, the loader stops
+# counting, the products stop rendering, or the site forgets how to behave
+# when the visitor asked for less motion.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The audit uses the WebSocket client from the standard library,
+          # which needs Node 22 or newer.
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and audit the production bundle
+        run: npm run audit:anim
+        env:
+          # The runner ships Chrome; the audit looks for it by itself, but
+          # the path is pinned here so a change of the image cannot break it.
+          CHROME_PATH: /usr/bin/google-chrome
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animation-audit-report
+          path: .freebuff/audit/report.json
+          if-no-files-found: ignore

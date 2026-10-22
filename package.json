@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit:anim": "node tools/anim-audit/index.mjs",
+    "audit:anim:dist": "node tools/anim-audit/index.mjs --no-build"
   },
   "dependencies": {
     "@studio-freight/lenis": "^1.0.27",
