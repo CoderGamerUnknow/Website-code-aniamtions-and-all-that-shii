@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useStickyContext } from "../../components/StickyCursor/StickyContext";
 import { ProductArt } from "../../components/artifacts/ProductArt";
 import { productsData } from "../../const/data";
@@ -126,6 +126,8 @@ function IndividualCharacterOverlay({
 }) {
   const timeline = useRef(gsap.timeline());
   const selectedCharacterRef = useRef();
+  const closeButtonRef = useRef(null);
+  const titleId = useId();
 
   useEffect(() => {
     const tl = timeline.current;
@@ -134,23 +136,44 @@ function IndividualCharacterOverlay({
     return () => tl.revert();
   }, []);
 
-  const handleCloseButtonClick = () => {
-    if (timeline.current.progress() === 0) {
-      // If the timeline is at the start (not played yet), play forward
-      timeline.current.play().then(() => {
-        setSelectedCharacter(null);
-      });
-    } else {
-      // If the timeline has played, reverse it
-      timeline.current.reverse().then(() => {
-        setSelectedCharacter(null);
-      });
-    }
-  };
+  const handleCloseButtonClick = useCallback(() => {
+    const tl = timeline.current;
+    // A timeline that has not played yet runs forward, a played one rewinds,
+    // and both are waited on before the overlay is unmounted.
+    if (tl.progress() === 0) tl.play();
+    else tl.reverse();
+    tl.then(() => setSelectedCharacter(null));
+  }, [setSelectedCharacter]);
+
+  useEffect(() => {
+    // The overlay covers the page, so it takes focus while it is open and
+    // gives it back to the card that opened it on the way out.
+    const opener = document.activeElement;
+    closeButtonRef.current?.focus();
+
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      handleCloseButtonClick();
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (opener instanceof HTMLElement) opener.focus();
+    };
+  }, [handleCloseButtonClick]);
 
   return (
-    <div ref={selectedCharacterRef} className={styles.selectedCharacter}>
+    <div
+      ref={selectedCharacterRef}
+      className={styles.selectedCharacter}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <button
+        ref={closeButtonRef}
         onClick={handleCloseButtonClick}
         className={styles.selectedCharacter__closeButton}
       >
@@ -169,7 +192,10 @@ function IndividualCharacterOverlay({
           className={styles.selectedCharacter__content__thumbnail}
         />
         <div className={styles.selectedCharacter__content__description}>
-          <h2 className={styles.selectedCharacter__content__description__title}>
+          <h2
+            id={titleId}
+            className={styles.selectedCharacter__content__description__title}
+          >
             {selectedCharacter.name}
           </h2>
           <p>{selectedCharacter.description}</p>
