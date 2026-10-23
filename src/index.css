@@ -262,6 +262,13 @@ body {
   cursor: pointer;
 }
 
+/* The iris is the page's keyboard control, so the focus ring is drawn inside
+   the circle: the eye clips anything painted outside it. */
+.eye .iris:focus-visible {
+  outline: 3px solid #eaffd0;
+  outline-offset: -6px;
+}
+
 .eye .iris.anim {
   animation-duration: 10s;
   animation-iteration-count: infinite;

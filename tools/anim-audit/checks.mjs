@@ -196,6 +196,99 @@ async function resizeTo(client, size) {
   await sleep(900);
 }
 
+/**
+ * Presses and releases a key the way a keyboard would.
+ *
+ * Tab is the interesting one: focus traversal only happens for a real key
+ * press, so reachability cannot be checked by setting focus in a script.
+ */
+async function pressKey(client, key, keyCode) {
+  const event = {
+    key,
+    code: key === " " ? "Space" : key,
+    windowsVirtualKeyCode: keyCode,
+    nativeVirtualKeyCode: keyCode,
+  };
+  await client.send(
+    "Input.dispatchKeyEvent",
+    { type: "keyDown", ...event },
+    client.sessionId
+  );
+  await client.send(
+    "Input.dispatchKeyEvent",
+    { type: "keyUp", ...event },
+    client.sessionId
+  );
+}
+
+/**
+ * What a screen reader and a keyboard user can get out of the page.
+ *
+ * Only the rules that catch real defects are checked: every control has a
+ * name, every image has an alt (empty when it is decoration), the page has one
+ * h1, the headings do not skip a level, and the document declares its
+ * language.
+ */
+const A11Y_SNAPSHOT = `(() => {
+  const clean = (value) => (value || '').replace(/\\s+/g, ' ').trim();
+  const visible = (el) => {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return false;
+    const style = getComputedStyle(el);
+    if (style.visibility === 'hidden' || style.display === 'none') return false;
+    return Number(style.opacity) > 0.05;
+  };
+  const nameOf = (el) => {
+    const labelledby = el.getAttribute('aria-labelledby');
+    if (labelledby) {
+      const joined = labelledby
+        .split(/\\s+/)
+        .map((id) => document.getElementById(id))
+        .filter(Boolean)
+        .map((node) => clean(node.textContent))
+        .join(' ');
+      if (joined) return joined;
+    }
+    const label = clean(el.getAttribute('aria-label'));
+    if (label) return label;
+    const image = el.querySelector('img[alt]');
+    if (image) {
+      const alt = clean(image.getAttribute('alt'));
+      if (alt) return alt;
+    }
+    return clean(el.textContent);
+  };
+
+  const controls = [...document.querySelectorAll("a[href], button, [role='button']")].filter(visible);
+  const unnamed = controls.filter((el) => !nameOf(el)).map((el) => el.tagName.toLowerCase());
+
+  const images = [...document.querySelectorAll('img')].filter(visible);
+  const missingAlt = images
+    .filter((el) => !el.hasAttribute('alt'))
+    .map((el) => el.getAttribute('src'));
+
+  const headings = [...document.querySelectorAll('h1, h2, h3, h4, h5, h6')]
+    .filter(visible)
+    .map((el) => Number(el.tagName[1]));
+
+  const skips = [];
+  for (let i = 1; i < headings.length; i++) {
+    if (headings[i] > headings[i - 1] + 1) {
+      skips.push(headings[i - 1] + '->' + headings[i]);
+    }
+  }
+
+  return {
+    lang: clean(document.documentElement.lang),
+    controls: controls.length,
+    unnamed,
+    images: images.length,
+    missingAlt,
+    h1: headings.filter((level) => level === 1).length,
+    skips,
+  };
+})()`;
+
 // ---------------------------------------------------------------- checks
 
 export const normalChecks = [
@@ -1009,6 +1102,166 @@ export const normalChecks = [
   },
 
   {
+    id: "a11y.document",
+    group: "Accessibility",
+    title: "The document is described: language, headings, names and alt text",
+    route: "/",
+    async run(client) {
+      const home = await client.evaluate(A11Y_SNAPSHOT);
+      if (!home.lang) return fail("the document does not declare its language", { home });
+      if (home.h1 !== 1) return fail(`${home.h1} h1 headings on the landing page`, { home });
+      if (home.skips.length) {
+        return fail(`headings skip a level (${home.skips.join(", ")})`, { home });
+      }
+      if (home.unnamed.length) {
+        return fail(`${home.unnamed.length} controls have no accessible name`, { home });
+      }
+      if (home.missingAlt.length) {
+        return fail(`${home.missingAlt.length} images have no alt attribute`, { home });
+      }
+
+      // The product page is the other shape of page: a grid of buttons and a
+      // dialog that only exists once a card is opened.
+      await client.navigate(`${client.base}/products?audit=1`);
+      const ready = await waitForApp(client);
+      if (!ready) return fail("the products page never became ready");
+      await waitForSettled(client);
+
+      const products = await client.evaluate(A11Y_SNAPSHOT);
+      if (products.h1 !== 1) {
+        return fail(`${products.h1} h1 headings on the products page`, { products });
+      }
+      if (products.skips.length) {
+        return fail(
+          `the products page skips a heading level (${products.skips.join(", ")})`,
+          { products }
+        );
+      }
+      if (products.unnamed.length) {
+        return fail(
+          `${products.unnamed.length} controls on the products page have no accessible name`,
+          { products }
+        );
+      }
+      if (products.missingAlt.length) {
+        return fail(
+          `${products.missingAlt.length} images on the products page have no alt attribute`,
+          { products }
+        );
+      }
+
+      return pass(
+        `landing page: ${home.controls} named controls, ${home.images} described images, one h1; products page: ${products.controls} controls, one h1`,
+        { home, products }
+      );
+    },
+  },
+
+  {
+    id: "a11y.keyboard",
+    group: "Accessibility",
+    title: "Every control can be reached with Tab, and the eye answers Enter",
+    route: "/",
+    async run(client) {
+      await scrollTo(client, 0);
+      await sleep(800);
+
+      // Tagging the controls before the walk gives each one a stable name to
+      // report, whatever it is called on screen.
+      const controlCount = await client.evaluate(`(() => {
+        const visible = (el) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return false;
+          const style = getComputedStyle(el);
+          if (style.visibility === 'hidden' || style.display === 'none') return false;
+          return Number(style.opacity) > 0.05;
+        };
+        const controls = [...document.querySelectorAll("a[href], button, [role='button']")].filter(visible);
+        controls.forEach((el, index) => el.setAttribute('data-a11y-index', String(index)));
+        if (document.activeElement && document.activeElement.blur) {
+          document.activeElement.blur();
+        }
+        return controls.length;
+      })()`);
+      if (!controlCount) return fail("the landing page has no controls at all");
+
+      const reached = new Set();
+      for (let i = 0; i < controlCount + 2; i++) {
+        await pressKey(client, "Tab", 9);
+        const index = await client.evaluate(`(() => {
+          const el = document.activeElement;
+          if (!el || !el.getAttribute) return null;
+          return el.getAttribute('data-a11y-index');
+        })()`);
+        if (index !== null && index !== undefined) reached.add(index);
+      }
+
+      const missing = [];
+      for (let i = 0; i < controlCount; i++) {
+        if (!reached.has(String(i))) missing.push(i);
+      }
+      if (missing.length) {
+        return fail(
+          `${missing.length} of ${controlCount} controls can never be reached with Tab`,
+          { missing }
+        );
+      }
+
+      // The eye was the one control that only answered a pointer. It has to be
+      // announced as a button and work from the keyboard to stay reachable.
+      const eye = await client.evaluate(`(() => {
+        const el = document.querySelector('.eye .iris');
+        if (!el) return null;
+        return {
+          role: el.getAttribute('role'),
+          tabIndex: el.tabIndex,
+          label: (el.getAttribute('aria-label') || '').trim(),
+        };
+      })()`);
+      if (!eye) return fail("the eye is not on the page");
+      if (eye.role !== "button" || eye.tabIndex < 0 || !eye.label) {
+        return fail("the eye cannot be operated from the keyboard", { eye });
+      }
+
+      // The eye only appears on the way down, so the page is scrolled back to
+      // the top first: arriving from the footer would be an upward scroll and
+      // leave the control hidden while the check tries to focus it.
+      await scrollTo(client, 0);
+      await sleep(800);
+      await scrollTo(client, 3000);
+      await sleep(2500);
+
+      const focused = await client.evaluate(`(() => {
+        const el = document.querySelector('.eye .iris');
+        if (!el) return null;
+        el.focus();
+        const wrapper = el.parentElement;
+        const style = getComputedStyle(wrapper);
+        return {
+          isActive: document.activeElement === el,
+          visibility: style.visibility,
+          opacity: Number(style.opacity),
+        };
+      })()`);
+      if (!focused || !focused.isActive) {
+        return fail("the eye cannot take focus", { focused });
+      }
+
+      await pressKey(client, "Enter", 13);
+      await sleep(6000);
+      const top = await currentScroll(client);
+      if (top === null || top > 50) {
+        return fail(`Enter on the eye left the page at ${top}px`, { top });
+      }
+
+      return pass(
+        `${controlCount} controls reached with Tab, and Enter on the eye scrolled back to ${top}px`,
+        { eye }
+      );
+    },
+  },
+
+  {
     id: "console.errors",
     group: "Console",
     title: "Nothing was written to the console as an error",
@@ -1068,6 +1321,16 @@ export const reducedChecks = [
     title: "The canvas scene draws one still frame instead of animating",
     route: "/",
     async run(client) {
+      // The page is still arranging itself for the first second: the webfonts
+      // arrive and the disclaimer is measured, and every reflow resizes the
+      // canvas, which correctly redraws the still frame for the new size.
+      // Sameness is measured once that has stopped, so a single resize cannot
+      // be mistaken for an animation.
+      await client.evaluate(
+        `document.fonts ? document.fonts.ready.then(() => true) : true`
+      );
+      await sleep(1200);
+
       // One still frame is the whole point: the hash of the downscaled scene
       // has to stay identical, exactly as it does for a paused scene.
       const first = await client.evaluate(CANVAS_HASH);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useMotionValue } from "framer-motion";
 import { useScrollContext } from "../useScrollContext";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
@@ -13,6 +13,16 @@ export function Eye() {
     x: useMotionValue(0),
     y: useMotionValue(0),
   };
+
+  // Shared by the pointer and the keyboard paths, so both take the same trip
+  // and the reduced-motion preference is honoured in one place.
+  const scrollToTop = useCallback(() => {
+    if (!lenis) return;
+    lenis.scrollTo(
+      "top",
+      reducedMotion ? { immediate: true } : { lerp: 0.02 }
+    );
+  }, [lenis, reducedMotion]);
 
   // The depth of the iris follows the size of the eye, which changes with
   // the viewport. Reading the width while rendering left the iris at the old
@@ -116,18 +126,22 @@ export function Eye() {
 
   return (
     <motion.div ref={eyeRef} className="eye">
+      {/* A pointer-only control is invisible to anyone on a keyboard, so the
+          iris is announced as a button and answers the keys a button does. */}
       <motion.div
         ref={irisRef}
+        role="button"
+        tabIndex={0}
+        aria-label="Scroll back to top"
         className={reducedMotion ? "iris" : "iris anim"}
         style={{ transformStyle: "preserve-3d", pointerEvents: "auto" }}
-        onClick={() =>
-          // The eased scroll back to the top is a long trip across the page.
-          lenis &&
-          lenis.scrollTo(
-            "top",
-            reducedMotion ? { immediate: true } : { lerp: 0.02 }
-          )
-        }
+        // The eased scroll back to the top is a long trip across the page.
+        onClick={scrollToTop}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          scrollToTop();
+        }}
       />
     </motion.div>
   );

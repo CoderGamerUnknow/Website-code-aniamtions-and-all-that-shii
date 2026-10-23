@@ -147,7 +147,7 @@ function Footer() {
 
         <div className="footer__grid">
           <section className="footer__block">
-            <h3 className="footer__blockTitle">Fan-made concept</h3>
+            <h2 className="footer__blockTitle">Fan-made concept</h2>
             <p>
               This is an independent, non-commercial front-end project built to
               celebrate NVIDIA, GeForce RTX and the technology behind modern
@@ -157,7 +157,7 @@ function Footer() {
           </section>
 
           <section className="footer__block">
-            <h3 className="footer__blockTitle">Trademarks &amp; copyright</h3>
+            <h2 className="footer__blockTitle">Trademarks &amp; copyright</h2>
             <p>
               NVIDIA, the NVIDIA logo, GeForce, RTX, DLSS, Reflex, Frame
               Generation, CUDA and related names are trademarks or registered
@@ -169,7 +169,7 @@ function Footer() {
           </section>
 
           <section className="footer__block">
-            <h3 className="footer__blockTitle">No affiliation</h3>
+            <h2 className="footer__blockTitle">No affiliation</h2>
             <p>
               This project is not affiliated with, authorized, sponsored,
               endorsed or approved by NVIDIA Corporation or any of its
@@ -179,7 +179,7 @@ function Footer() {
           </section>
 
           <section className="footer__block">
-            <h3 className="footer__blockTitle">Artwork &amp; typefaces</h3>
+            <h2 className="footer__blockTitle">Artwork &amp; typefaces</h2>
             <p>
               No official NVIDIA marketing material, product renders, logos or
               brand fonts are hosted here. The perspective grid, glows and
@@ -190,7 +190,7 @@ function Footer() {
           </section>
 
           <section className="footer__block">
-            <h3 className="footer__blockTitle">Built with</h3>
+            <h2 className="footer__blockTitle">Built with</h2>
             <p>
               React 18, Vite, GSAP with ScrollTrigger, Lenis, Framer Motion and
               Sass, each used under its own open-source license. Their authors
@@ -199,7 +199,7 @@ function Footer() {
           </section>
 
           <section className="footer__block">
-            <h3 className="footer__blockTitle">Privacy</h3>
+            <h2 className="footer__blockTitle">Privacy</h2>
             <p>
               No accounts, cookies, analytics or tracking of any kind. Every
               animation runs locally in your browser, no personal data is
