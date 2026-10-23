@@ -118,10 +118,10 @@ body {
   text-decoration: none;
   color: #eaffd0;
   transition: color 0.2s ease;
+}
 
-  &:hover {
-    color: #b8ff3d;
-  }
+.navbar a:hover {
+  color: #b8ff3d;
 }
 
 .navbar__pseudoElement {

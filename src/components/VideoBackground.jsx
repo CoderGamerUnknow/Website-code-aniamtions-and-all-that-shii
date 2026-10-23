@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useReducedMotion } from "../hooks/useReducedMotion";
+import { useSceneVisibility } from "../hooks/useSceneVisibility";
 
 // Scroll-scrubbed canvas scene that replaces the original video background:
 // a perspective grid flying through a green data-scape, driven by scroll
@@ -124,23 +124,11 @@ function buildBackground(width, height) {
 
 export function VideoBackground({ videoRef, scroll }) {
   const canvasRef = useRef(null);
-  const { ref: contentRef, progressRef } = scroll;
+  const { ref: content, progressRef } = scroll;
   const reducedMotion = useReducedMotion();
-
-  // Size the scroll container like the original video-duration-driven layout.
-  useEffect(() => {
-    const scrollSection = contentRef;
-    if (!scrollSection) return;
-
-    // The disclaimer sits after the scene, so reserve its height as well;
-    // otherwise the end of the footer is unreachable on shorter viewports.
-    const footer = document.querySelector("[data-footer]");
-    scrollSection.style.height = `${SCENE_SCROLL_HEIGHT + (footer?.offsetHeight || 0)}px`;
-    ScrollTrigger.refresh();
-    return () => {
-      scrollSection.style.height = "auto";
-    };
-  }, [contentRef]);
+  // The length of the scroll track belongs to the footer, which owns its own
+  // height; the scene only has to know whether its pixels can be seen.
+  const visible = useSceneVisibility(canvasRef, content);
 
   // Render loop
   useEffect(() => {
@@ -150,15 +138,8 @@ export function VideoBackground({ videoRef, scroll }) {
     if (!ctx) return;
 
     let frameId = 0;
-    let running = false;
     let dpr = 1;
     let background = null;
-    // Two independent reasons to stand still: the scene cannot be seen while
-    // the tab is in the background, and it cannot be seen while the opaque
-    // footer covers it. Drawing either time is spent on nothing, and the
-    // scene is the only thing on the site that animates on its own.
-    let hidden = document.hidden;
-    let covered = false;
 
     const draw = (time) => {
       const width = window.innerWidth;
@@ -179,92 +160,30 @@ export function VideoBackground({ videoRef, scroll }) {
       canvas.height = Math.round(window.innerHeight * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       background = buildBackground(canvas.width, canvas.height);
-      // A still frame has to be redrawn when the canvas is resized.
-      if (reducedMotion) draw(0);
+      // Resizing clears the canvas. While the loop runs the next frame paints
+      // over it at once; while nothing else will, the still frame is redrawn.
+      if (!frameId) draw(0);
     };
     resize();
     window.addEventListener("resize", resize);
 
-    const loop = (time) => {
-      draw(time);
+    // With less motion the scene draws a single frame and stays there. Without
+    // it the loop runs only while the scene can be seen: a hidden tab or an
+    // opaque layer over the viewport turns every frame into wasted work, and
+    // the scene is the only thing on the site that animates on its own.
+    if (!reducedMotion && visible) {
+      const loop = (time) => {
+        draw(time);
+        frameId = requestAnimationFrame(loop);
+      };
       frameId = requestAnimationFrame(loop);
-    };
-
-    const startDrawing = () => {
-      if (running) return;
-      running = true;
-      frameId = requestAnimationFrame(loop);
-    };
-
-    const stopDrawing = () => {
-      running = false;
-      cancelAnimationFrame(frameId);
-    };
-
-    const syncDrawing = () => {
-      if (hidden || covered) stopDrawing();
-      else startDrawing();
-    };
-
-    const onVisibilityChange = () => {
-      hidden = document.hidden;
-      syncDrawing();
-    };
-
-    // The footer is opaque, but it only hides the scene on a viewport it is
-    // taller than. On a taller viewport a strip of the page stays visible
-    // above it, so the scene has to keep drawing. When the footer does cover
-    // the viewport, a trigger from its top hitting the top of the screen to
-    // its bottom is exactly "the viewport is inside the footer", and it
-    // follows the same scroller as the rest of the page.
-    const footer = document.querySelector("[data-footer]");
-    let occlusion = null;
-
-    const syncOcclusion = () => {
-      occlusion?.kill();
-      occlusion = null;
-      covered = false;
-
-      if (footer && footer.offsetHeight >= window.innerHeight) {
-        occlusion = ScrollTrigger.create({
-          trigger: footer,
-          start: "top top",
-          // The end of the trigger is exclusive, and the range ends exactly at
-          // the last scroll position: without the extra pixel the scene would
-          // start drawing again at the very bottom of the page, which is the
-          // one place it is always covered.
-          end: "bottom bottom-=1",
-          onToggle: (self) => {
-            covered = self.isActive;
-            syncDrawing();
-          },
-        });
-        covered = occlusion.isActive;
-      }
-
-      syncDrawing();
-    };
-
-    window.addEventListener("resize", resize);
-    window.addEventListener("resize", syncOcclusion);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    if (reducedMotion) {
-      // The scene runs on its own, without the visitor asking for it. With
-      // reduced motion a single frame is drawn and the loop stays stopped.
-      draw(0);
-    } else {
-      syncOcclusion();
     }
 
     return () => {
-      stopDrawing();
-      occlusion?.kill();
+      cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
-      window.removeEventListener("resize", syncOcclusion);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [progressRef, reducedMotion]);
+  }, [progressRef, reducedMotion, visible]);
 
   return (
     <div

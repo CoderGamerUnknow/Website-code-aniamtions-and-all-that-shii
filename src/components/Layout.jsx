@@ -125,7 +125,15 @@ function Footer() {
   }, [contentRef]);
 
   return (
-    <footer ref={footerRef} data-footer className="footer">
+    <footer
+      // Opaque and full-width, so on a viewport shorter than it is, the panel
+      // covers the canvas scene completely; this attribute is what tells the
+      // scene to stop drawing in that case.
+      ref={footerRef}
+      data-footer
+      data-scene-occluder
+      className="footer"
+    >
       <div className="footer__inner">
         <p className="footer__eyebrow">Disclaimer</p>
 

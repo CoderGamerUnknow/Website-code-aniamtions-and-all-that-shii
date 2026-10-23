@@ -17,7 +17,9 @@ export function LandscapePrompt() {
 
   if (windowWidth <= 600)
     return (
-      <div className="landscapePrompt">
+      // A black panel over the whole viewport: the scene behind it cannot be
+      // seen, so it is marked as an occluder and the canvas stops drawing.
+      <div className="landscapePrompt" data-scene-occluder>
         <p>
           For an optimal experience please use your device in landscape mode.
         </p>

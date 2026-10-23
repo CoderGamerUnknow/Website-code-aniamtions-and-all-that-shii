@@ -143,6 +143,59 @@ function consoleErrors(client) {
   });
 }
 
+/**
+ * A fingerprint of the canvas pixels, downscaled to 32x32.
+ *
+ * The whole scene rather than one corner of it: the top of the canvas only
+ * holds the stars, which move with the scroll and stand still while the page
+ * does. The grid below the horizon sweeps with time, so a scene that keeps
+ * drawing keeps changing this value and a paused one does not.
+ */
+const CANVAS_HASH = `(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return null;
+  const off = document.createElement('canvas');
+  off.width = 32;
+  off.height = 32;
+  const octx = off.getContext('2d');
+  octx.drawImage(c, 0, 0, 32, 32);
+  const d = octx.getImageData(0, 0, 32, 32).data;
+  let h = 0;
+  for (let i = 0; i < d.length; i++) { h = (h * 31 + d[i]) | 0; }
+  return h;
+})()`;
+
+/**
+ * Resizes the viewport the way a real window would, or restores the real one
+ * when `size` is null.
+ *
+ * A viewport changed through the protocol does not reach the page as a resize
+ * event, so the one a real window would send is dispatched and the scroll
+ * measurements are refreshed after it.
+ */
+async function resizeTo(client, size) {
+  if (size) {
+    await client.send(
+      "Emulation.setDeviceMetricsOverride",
+      {
+        width: size.width,
+        height: size.height,
+        deviceScaleFactor: 1,
+        mobile: false,
+      },
+      client.sessionId
+    );
+  } else {
+    await client.send("Emulation.clearDeviceMetricsOverride", {}, client.sessionId);
+  }
+  await client.evaluate(`(() => {
+    window.dispatchEvent(new Event('resize'));
+    if (window.__ScrollTrigger) window.__ScrollTrigger.refresh();
+    return true;
+  })()`);
+  await sleep(900);
+}
+
 // ---------------------------------------------------------------- checks
 
 export const normalChecks = [
@@ -628,35 +681,21 @@ export const normalChecks = [
     route: "/",
     async run(client) {
       // The scene is the only thing on the site that animates on its own, so
-      // it must stop when the tab is hidden and when the opaque footer covers
-      // it. Its pixels are the evidence: a paused scene stops changing.
-      // The whole scene, downscaled, rather than one corner of it: the top of
-      // the canvas only holds the stars, which move with the scroll and stand
-      // still while the page does. The grid below the horizon sweeps with time.
-      const canvasHash = `(() => {
-        const c = document.querySelector('canvas');
-        if (!c) return null;
-        const off = document.createElement('canvas');
-        off.width = 32;
-        off.height = 32;
-        const octx = off.getContext('2d');
-        octx.drawImage(c, 0, 0, 32, 32);
-        const d = octx.getImageData(0, 0, 32, 32).data;
-        let h = 0;
-        for (let i = 0; i < d.length; i++) { h = (h * 31 + d[i]) | 0; }
-        return h;
-      })()`;
-
+      // every frame it draws has to be one a visitor can see: it must stop
+      // for a hidden tab and for an opaque layer over the whole viewport, and
+      // it must keep drawing for a partial cover, which is most of the page.
       const sample = async () => {
-        const first = await client.evaluate(canvasHash);
+        const first = await client.evaluate(CANVAS_HASH);
         await sleep(600);
-        const second = await client.evaluate(canvasHash);
+        const second = await client.evaluate(CANVAS_HASH);
         return { first, second, still: first === second };
       };
 
       const geometry = await scrollGeometry(client);
       if (!geometry) return fail("the scroll container was not found");
 
+      // A fifth of the way down, on the window the audit really runs in: the
+      // grid sweeps, so the scene is drawing.
       await scrollTo(client, Math.round(geometry.maxScroll * 0.2));
       await sleep(600);
       const visible = await sample();
@@ -665,73 +704,50 @@ export const normalChecks = [
         return fail("the scene is not drawing while it is visible", { visible });
       }
 
-      // Whether the footer can cover the viewport depends on the viewport. A
-      // footer shorter than the screen leaves a strip of the scene visible, and
-      // the scene has to keep drawing there rather than freezing.
-      const footerBox = await client.evaluate(`(() => {
-        const f = document.querySelector('[data-footer]');
-        return f ? { height: Math.round(f.offsetHeight), viewport: innerHeight } : null;
-      })()`);
-      if (!footerBox) return fail("the footer is not on the page");
-
+      // The end of the page on that same window. The disclaimer is shorter
+      // than the screen here, so a strip of the scene stays visible above it
+      // and the scene has to keep drawing — freezing would be the bug, and it
+      // is the case a check written only against a short viewport misses.
       await scrollTo(client, geometry.maxScroll);
       await sleep(900);
       const atBottom = await sample();
-      const coversAtBottom = footerBox.height >= footerBox.viewport;
-      if (coversAtBottom && !atBottom.still) {
-        return fail("the scene keeps drawing while the footer covers it", {
-          atBottom,
-          footerBox,
-        });
-      }
-      if (!coversAtBottom && atBottom.still) {
+      if (atBottom.still) {
         return fail(
-          "the scene froze while a strip of it was still visible above the footer",
-          { atBottom, footerBox }
+          "the scene froze while a strip of it was still visible above the disclaimer",
+          { atBottom, geometry }
         );
       }
 
-      // A laptop-sized viewport, shorter than the footer, so the covered case
-      // is exercised whatever size the window running the audit happens to be.
-      await client.send(
-        "Emulation.setDeviceMetricsOverride",
-        { width: 1280, height: 400, deviceScaleFactor: 1, mobile: false },
-        client.sessionId
-      );
-      // A viewport changed through the protocol does not reach the page as a
-      // resize event, so the one a real window would send is dispatched and the
-      // measurements are refreshed.
-      await client.evaluate(`(() => {
-        window.dispatchEvent(new Event('resize'));
-        if (window.__ScrollTrigger) window.__ScrollTrigger.refresh();
-        return true;
-      })()`);
-      await sleep(800);
+      // A window the disclaimer is taller than: at the bottom the panel covers
+      // the scene completely, so the drawing has to stop.
+      await resizeTo(client, { width: 1280, height: 400 });
       const shortGeometry = await scrollGeometry(client);
       await scrollTo(client, shortGeometry.maxScroll);
       await sleep(1000);
       const covered = await sample();
       if (!covered.still) {
-        return fail("the scene keeps drawing while the footer covers it", {
+        return fail("the scene keeps drawing while the disclaimer covers it", {
           covered,
-          footerBox,
         });
       }
 
-      await client.send(
-        "Emulation.clearDeviceMetricsOverride",
-        {},
-        client.sessionId
-      );
-      await client.evaluate(`(() => {
-        window.dispatchEvent(new Event('resize'));
-        if (window.__ScrollTrigger) window.__ScrollTrigger.refresh();
-        return true;
-      })()`);
+      // A portrait phone: the rotate prompt is opaque and fills the viewport,
+      // so the scene behind it cannot be seen either.
+      await resizeTo(client, { width: 420, height: 800 });
+      await sleep(1200);
+      const behindPrompt = await sample();
+      if (!behindPrompt.still) {
+        return fail("the scene keeps drawing behind the rotate prompt", {
+          behindPrompt,
+        });
+      }
+
+      // Back to the real window: everything is visible again.
+      await resizeTo(client, null);
       await sleep(900);
       const resumed = await sample();
       if (resumed.still) {
-        return fail("the scene did not resume when the footer stopped covering it", {
+        return fail("the scene did not resume when it became visible again", {
           resumed,
         });
       }
@@ -765,8 +781,8 @@ export const normalChecks = [
       }
 
       return pass(
-        "drew while visible, froze behind the footer and in a hidden tab, and resumed both times",
-        { visible, covered, resumed, hiddenTab, shownAgain }
+        "drew while visible and above the disclaimer, froze under it, behind the rotate prompt and in a hidden tab, and resumed every time",
+        { visible, atBottom, covered, behindPrompt, resumed, hiddenTab, shownAgain }
       );
     },
   },
@@ -1052,25 +1068,12 @@ export const reducedChecks = [
     title: "The canvas scene draws one still frame instead of animating",
     route: "/",
     async run(client) {
-      // Downscaled whole scene: a corner of the canvas would report the same
-      // two frames even while the grid is moving.
-      const hash = `(() => {
-        const c = document.querySelector('canvas');
-        if (!c) return null;
-        const off = document.createElement('canvas');
-        off.width = 32;
-        off.height = 32;
-        const octx = off.getContext('2d');
-        octx.drawImage(c, 0, 0, 32, 32);
-        const d = octx.getImageData(0, 0, 32, 32).data;
-        let h = 0;
-        for (let i = 0; i < d.length; i++) { h = (h * 31 + d[i]) | 0; }
-        return h;
-      })()`;
-      const first = await client.evaluate(hash);
+      // One still frame is the whole point: the hash of the downscaled scene
+      // has to stay identical, exactly as it does for a paused scene.
+      const first = await client.evaluate(CANVAS_HASH);
       if (first === null) return fail("there is no canvas on the page");
       await sleep(700);
-      const second = await client.evaluate(hash);
+      const second = await client.evaluate(CANVAS_HASH);
       if (first !== second) {
         return fail("the canvas is still being redrawn", { first, second });
       }
