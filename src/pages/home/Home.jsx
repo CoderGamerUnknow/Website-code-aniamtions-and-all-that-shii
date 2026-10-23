@@ -1,5 +1,6 @@
 import gsap from "gsap";
 import { useEffect, useRef } from "react";
+import PropTypes from "prop-types";
 import {
   animateOutNow,
   animateImage,
@@ -8,12 +9,11 @@ import {
   animateShopNow,
 } from "./animations";
 import styles from "./home.module.scss";
-import { useScrollContext } from "../../components/Scroll";
+import { useScrollContext } from "../../components/useScrollContext";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { VideoBackground } from "../../components";
 
 export function Home() {
-  const timeline = useRef(gsap.timeline());
   const heroRef = useRef(null);
   const videoRef = useRef(null);
   const outNowRef = useRef(null);
@@ -26,8 +26,14 @@ export function Home() {
   const scrub = reducedMotion ? true : 1;
 
   useEffect(() => {
+    // The subtitles are scrubbed against the scroll content, which the Scroll
+    // component publishes a tick after mount. Waiting for it measures the
+    // triggers against the real element, and the timeline is built fresh on
+    // every run so a cleanup cannot leave stale children behind.
+    if (!scroll.ref) return undefined;
+
     const context = gsap.context(() => {
-      const tl = timeline.current;
+      const tl = gsap.timeline();
       tl.add(animateSeriesSubtitle(seriesRef, scroll.ref, scrub));
       tl.add(animateOutNow(outNowRef, scroll.ref, scrub));
       tl.add(animateShopNow(shopNowRef, scroll.ref, scrub));
@@ -38,7 +44,7 @@ export function Home() {
     }, heroRef);
 
     return () => context.revert();
-  }, []);
+  }, [scroll.ref, reducedMotion, scrub]);
 
   return (
     <>
@@ -108,3 +114,9 @@ function ShopNowSubtitle({ shopNowRef }) {
     </div>
   );
 }
+
+const refPropType = PropTypes.shape({ current: PropTypes.any });
+
+SeriesSubtitle.propTypes = { seriesRef: refPropType };
+OutNowSubtitle.propTypes = { outNowRef: refPropType };
+ShopNowSubtitle.propTypes = { shopNowRef: refPropType };

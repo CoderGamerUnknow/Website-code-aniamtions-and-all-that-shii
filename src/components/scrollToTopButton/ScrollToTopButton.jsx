@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Eye } from "./Eye";
 import { animateScrollToTop } from "../../pages/home/animations";
-import { useScrollContext } from "../Scroll";
+import { useScrollContext } from "../useScrollContext";
 import gsap from "gsap";
 import styles from "./scrollToTopButton.module.scss";
 

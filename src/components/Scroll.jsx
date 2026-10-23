@@ -1,16 +1,11 @@
-import {
-  createContext,
-  useRef,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
+import PropTypes from "prop-types";
 import Lenis from "@studio-freight/lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useRouterState } from "@tanstack/react-router";
 import { useReducedMotion } from "../hooks/useReducedMotion";
+import { ScrollContext } from "./useScrollContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -29,8 +24,6 @@ if (AUDIT_ENABLED) {
   window.__loadNonce = Date.now();
 }
 
-const scrollContext = createContext();
-export const useScrollContext = () => useContext(scrollContext);
 
 export function Scroll({ children }) {
   const [scroll, setScroll] = useState({
@@ -155,10 +148,14 @@ export function Scroll({ children }) {
           width: "100%",
         }}
       >
-        <scrollContext.Provider value={value}>
+        <ScrollContext.Provider value={value}>
           {children}
-        </scrollContext.Provider>
+        </ScrollContext.Provider>
       </div>
     </div>
   );
 }
+
+Scroll.propTypes = {
+  children: PropTypes.node.isRequired,
+};

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { useStickyContext } from "../../components/StickyCursor/StickyContext";
+import PropTypes from "prop-types";
+import { useStickyContext } from "../../components/StickyCursor/useStickyContext";
 import { ProductArt } from "../../components/artifacts/ProductArt";
 import { productsData } from "../../const/data";
 import { SecondaryLoader } from "../../components";
@@ -204,3 +205,12 @@ function IndividualCharacterOverlay({
     </div>
   );
 }
+
+IndividualCharacterOverlay.propTypes = {
+  selectedCharacter: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    art: PropTypes.object,
+  }).isRequired,
+  setSelectedCharacter: PropTypes.func.isRequired,
+};

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import PropTypes from "prop-types";
 import {
   animateTitleIn,
   introAnimation,
@@ -93,3 +94,10 @@ export function Loader({ timeline }) {
     </div>
   );
 }
+
+Loader.propTypes = {
+  // The intro timeline built by Layout; the loader only appends to it.
+  timeline: PropTypes.shape({
+    add: PropTypes.func.isRequired,
+  }),
+};

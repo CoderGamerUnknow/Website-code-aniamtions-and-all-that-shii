@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue } from "framer-motion";
-import { useScrollContext } from "../Scroll";
+import { useScrollContext } from "../useScrollContext";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 
 export function Eye() {
@@ -46,7 +46,7 @@ export function Eye() {
     return () => {
       window.removeEventListener("resize", updateEyePosition);
     };
-  }, [eyeRef]);
+  }, [eyeRef, eye.x, eye.y]);
 
   // Pointer tracking is registered inside an effect so the listeners are
   // cleaned up with the component (the previous version left them attached

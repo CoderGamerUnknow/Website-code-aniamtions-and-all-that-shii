@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import PropTypes from "prop-types";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { useSceneVisibility } from "../hooks/useSceneVisibility";
 
@@ -206,3 +207,11 @@ export function VideoBackground({ videoRef, scroll }) {
     </div>
   );
 }
+
+VideoBackground.propTypes = {
+  // The wrapper the scene fades in and out through, written by GSAP.
+  videoRef: PropTypes.object,
+  // The scroll context: the content element and the progress ref the scene
+  // reads on every frame.
+  scroll: PropTypes.object.isRequired,
+};

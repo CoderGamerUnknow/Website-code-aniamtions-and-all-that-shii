@@ -1,4 +1,5 @@
 import { useId } from "react";
+import PropTypes from "prop-types";
 
 const R = (n) => Math.round(n * 100) / 100;
 
@@ -52,6 +53,13 @@ function Fan({ cx, cy, r, accent }) {
     </g>
   );
 }
+
+Fan.propTypes = {
+  cx: PropTypes.number.isRequired,
+  cy: PropTypes.number.isRequired,
+  r: PropTypes.number.isRequired,
+  accent: PropTypes.string.isRequired,
+};
 
 function GpuBody({ fans, accent, badge, label }) {
   const isTriple = fans === 3;
@@ -127,6 +135,13 @@ function GpuBody({ fans, accent, badge, label }) {
   );
 }
 
+GpuBody.propTypes = {
+  fans: PropTypes.number,
+  accent: PropTypes.string.isRequired,
+  badge: PropTypes.string,
+  label: PropTypes.string,
+};
+
 function Rack({ accent, badge, label }) {
   const units = Array.from({ length: 10 }, (_, i) => i);
   const gradientId = useBodyGradientId();
@@ -191,6 +206,12 @@ function Rack({ accent, badge, label }) {
     </g>
   );
 }
+
+Rack.propTypes = {
+  accent: PropTypes.string.isRequired,
+  badge: PropTypes.string,
+  label: PropTypes.string,
+};
 
 function Chip({ accent, badge, label }) {
   const gradientId = useBodyGradientId();
@@ -269,6 +290,12 @@ function Chip({ accent, badge, label }) {
   );
 }
 
+Chip.propTypes = {
+  accent: PropTypes.string.isRequired,
+  badge: PropTypes.string,
+  label: PropTypes.string,
+};
+
 export function ProductArt({ art = {}, name = "", className }) {
   const { variant = "gpu", fans = 3, accent = "#76B900", badge = "" } = art;
   // short label for the art (drop the "GeForce " prefix so it fits)
@@ -292,3 +319,16 @@ export function ProductArt({ art = {}, name = "", className }) {
     </svg>
   );
 }
+
+ProductArt.propTypes = {
+  // `art` describes the drawing: which body, how many fans, its accent and
+  // the badge above the label.
+  art: PropTypes.shape({
+    variant: PropTypes.string,
+    fans: PropTypes.number,
+    accent: PropTypes.string,
+    badge: PropTypes.string,
+  }),
+  name: PropTypes.string,
+  className: PropTypes.string,
+};

@@ -1,8 +1,8 @@
 import gsap from "gsap";
 import { useEffect, useRef } from "react";
-import { useScrollContext } from "./Scroll";
+import { useScrollContext } from "./useScrollContext";
 import { Link } from "@tanstack/react-router";
-import { useStickyContext } from "./StickyCursor/StickyContext";
+import { useStickyContext } from "./StickyCursor/useStickyContext";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
 export function NavBar() {
@@ -81,13 +81,18 @@ export function NavBar() {
   };
 
   useEffect(() => {
+    // The trigger is measured against the scroll content, which the Scroll
+    // component publishes one tick after mount. Waiting for it builds the
+    // trigger against the real element instead of a missing one.
+    if (!scroll.ref) return undefined;
+
     const context = gsap.context(() => {
       const tl = timeline.current;
       tl.add(animateNav(navRef, scroll.ref), 0);
     });
 
     return () => context.revert();
-  }, []);
+  }, [scroll.ref]);
 
   const routes = [
     { name: "Home", path: "/" },

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import PropTypes from "prop-types";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Loader } from "../pages";
@@ -6,7 +7,7 @@ import { StickyCursor } from "./StickyCursor/StickyCursor";
 import { NavBar } from "./NavBar";
 import { ScrollToTopButton } from "./scrollToTopButton/ScrollToTopButton";
 import { LandscapePrompt } from "./LandscapePrompt";
-import { useScrollContext } from "./Scroll";
+import { useScrollContext } from "./useScrollContext";
 import { SCENE_SCROLL_HEIGHT } from "./VideoBackground";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
@@ -88,6 +89,10 @@ export function Layout({ children }) {
     </>
   );
 }
+
+Layout.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 const CONTACT_EMAIL = "sharmaprayaagraj@gmail.com";
 

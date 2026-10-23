@@ -1,6 +1,6 @@
-import { createContext, useContext, useRef } from "react";
-
-const StickyContext = createContext();
+import { useRef } from "react";
+import PropTypes from "prop-types";
+import { StickyContext } from "./useStickyContext";
 
 export const StickyProvider = ({ children }) => {
   const stickyElementsRef = useRef([]);
@@ -31,10 +31,6 @@ export const StickyProvider = ({ children }) => {
   );
 };
 
-export const useStickyContext = () => {
-  const context = useContext(StickyContext);
-  if (!context) {
-    throw new Error("useStickyContext must be used within a StickyProvider");
-  }
-  return context;
+StickyProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
