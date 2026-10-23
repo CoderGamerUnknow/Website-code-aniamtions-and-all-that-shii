@@ -2,7 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Loader } from "../pages";
+// Imported from its own module rather than the pages barrel: the barrel
+// re-exports the routes, and pulling it in here would put the lazy routes back
+// into the first download.
+import { Loader } from "../pages/loader/Loader";
 import { StickyCursor } from "./StickyCursor/StickyCursor";
 import { NavBar } from "./NavBar";
 import { ScrollToTopButton } from "./scrollToTopButton/ScrollToTopButton";

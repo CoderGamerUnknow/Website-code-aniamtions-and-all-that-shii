@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import {
@@ -7,10 +8,11 @@ import {
   Router,
   RouterProvider,
 } from "@tanstack/react-router";
-import { Characters, Home, Story } from "./pages";
+import { Home } from "./pages/home/Home";
 import { Layout } from "./components";
 import { StickyProvider } from "./components/StickyCursor/StickyContext";
 import { Scroll } from "./components/Scroll";
+import { Characters, Story } from "./routes";
 
 const rootRoute = new RootRoute({
   component: () => {
@@ -18,7 +20,9 @@ const rootRoute = new RootRoute({
       <StickyProvider>
         <Scroll>
           <Layout>
-            <Outlet />
+            <Suspense fallback={null}>
+              <Outlet />
+            </Suspense>
           </Layout>
         </Scroll>
       </StickyProvider>
