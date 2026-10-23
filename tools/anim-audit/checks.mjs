@@ -222,6 +222,114 @@ async function pressKey(client, key, keyCode) {
 }
 
 /**
+ * Marks every control that is currently visible with a stable index.
+ *
+ * A control is only visible at some scroll positions: the call to action
+ * appears at the end of the track and the eye only shows on the way down. Each
+ * pass tags what it can see, so a check that looks at two positions covers
+ * both, and an index once assigned never changes.
+ */
+const TAG_CONTROLS = `(() => {
+  const visible = (el) => {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return false;
+    const style = getComputedStyle(el);
+    if (style.visibility === 'hidden' || style.display === 'none') return false;
+    return Number(style.opacity) > 0.05;
+  };
+  const controls = [...document.querySelectorAll("a[href], button, [role='button']")].filter(visible);
+  for (const el of controls) {
+    if (el.hasAttribute('data-a11y-index')) continue;
+    el.setAttribute(
+      'data-a11y-index',
+      String(document.querySelectorAll('[data-a11y-index]').length)
+    );
+  }
+  return document.querySelectorAll('[data-a11y-index]').length;
+})()`;
+
+/** Is the call to action on screen right now? */
+const CALL_TO_ACTION_SHOWN = `(() => {
+  const link = [...document.querySelectorAll('a')].find(
+    (a) => (a.textContent || '').trim() === 'BUY NOW'
+  );
+  if (!link) return false;
+  const style = getComputedStyle(link);
+  if (style.visibility === 'hidden' || style.display === 'none') return false;
+  return Number(style.opacity) > 0.05;
+})()`;
+
+/**
+ * Moves to a scroll position where the call to action is on screen.
+ *
+ * The call to action is revealed by a scrubbed trigger that starts at 7400px
+ * and ends when the disclaimer reaches the viewport, so its position cannot be
+ * measured: before that trigger fires it is display: none. The scroll
+ * position is read from the trigger itself, which follows the viewport, and
+ * it is then verified - a scrub can be caught mid-fade, and nothing about a
+ * control that is still hidden can be checked.
+ */
+async function scrollToCallToAction(client) {
+  const fromTrigger = await client.evaluate(`(() => {
+    const ST = window.__ScrollTrigger;
+    if (!ST) return null;
+    const withEnd = ST.getAll().filter(
+      (trigger) => trigger.vars && trigger.vars.endTrigger
+    );
+    if (withEnd.length === 0) return null;
+    const trigger = withEnd[0];
+    return Math.round(trigger.start + (trigger.end - trigger.start) * 0.4);
+  })()`);
+
+  for (const candidate of [fromTrigger, 7600, 8000, 8400, 8800]) {
+    if (candidate === null || candidate === undefined) continue;
+    await scrollTo(client, Math.max(0, candidate));
+    await sleep(900);
+    if (await client.evaluate(CALL_TO_ACTION_SHOWN)) return true;
+  }
+  return false;
+}
+
+const FOCUS_INDEX = `(() => {
+  const el = document.activeElement;
+  if (!el || !el.getAttribute) return null;
+  return el.getAttribute('data-a11y-index');
+})()`;
+
+/**
+ * Walks the page with Tab and returns the indexes that were focused.
+ *
+ * Tab moves real focus, so reachability has to be measured by pressing it: a
+ * script that calls focus() would pass for a control nobody could reach.
+ */
+async function tabWalk(client, count) {
+  const reached = new Set();
+  for (let i = 0; i < count + 2; i++) {
+    await pressKey(client, "Tab", 9);
+    const index = await client.evaluate(FOCUS_INDEX);
+    if (index !== null && index !== undefined) reached.add(index);
+  }
+  return reached;
+}
+
+/** Fails with a readable reason when a snapshot breaks a document rule. */
+function documentProblems(snapshot, label) {
+  const problems = [];
+  if (!snapshot.lang) problems.push("the document declares no language");
+  if (snapshot.h1 !== 1) problems.push(`${snapshot.h1} h1 headings`);
+  if (snapshot.skips.length) {
+    problems.push(`headings skip a level (${snapshot.skips.join(", ")})`);
+  }
+  if (snapshot.unnamed.length) {
+    problems.push(`${snapshot.unnamed.length} controls with no accessible name`);
+  }
+  if (snapshot.missingAlt.length) {
+    problems.push(`${snapshot.missingAlt.length} images with no alt attribute`);
+  }
+  return problems.length ? `${label}: ${problems.join("; ")}` : null;
+}
+
+/**
  * What a screen reader and a keyboard user can get out of the page.
  *
  * Only the rules that catch real defects are checked: every control has a
@@ -281,6 +389,7 @@ const A11Y_SNAPSHOT = `(() => {
   return {
     lang: clean(document.documentElement.lang),
     controls: controls.length,
+    names: controls.map(nameOf),
     unnamed,
     images: images.length,
     missingAlt,
@@ -1108,17 +1217,39 @@ export const normalChecks = [
     route: "/",
     async run(client) {
       const home = await client.evaluate(A11Y_SNAPSHOT);
-      if (!home.lang) return fail("the document does not declare its language", { home });
-      if (home.h1 !== 1) return fail(`${home.h1} h1 headings on the landing page`, { home });
-      if (home.skips.length) {
-        return fail(`headings skip a level (${home.skips.join(", ")})`, { home });
+      const homeProblem = documentProblems(home, "landing page");
+      if (homeProblem) return fail(homeProblem, { home });
+
+      // The call to action is only on screen for part of the track.
+      const reachedCallToAction = await scrollToCallToAction(client);
+      if (!reachedCallToAction) {
+        return fail("the call to action never came on screen");
       }
-      if (home.unnamed.length) {
-        return fail(`${home.unnamed.length} controls have no accessible name`, { home });
+      await sleep(600);
+
+      const deep = await client.evaluate(A11Y_SNAPSHOT);
+      const deepProblem = documentProblems(deep, "landing page, at the call to action");
+      if (deepProblem) return fail(deepProblem, { deep });
+
+      const missingCallsToAction = ["BUY NOW", "EXPLORE RTX"].filter(
+        (text) => !deep.names.includes(text)
+      );
+      if (missingCallsToAction.length) {
+        return fail(
+          `${missingCallsToAction.join(" and ")} were not visible, so they were not checked`,
+          { deep }
+        );
       }
-      if (home.missingAlt.length) {
-        return fail(`${home.missingAlt.length} images have no alt attribute`, { home });
-      }
+
+      // The disclaimer is the last thing on the page and carries the footer
+      // link, so the end of the track is a position of its own.
+      const geometry = await scrollGeometry(client);
+      await scrollTo(client, geometry.maxScroll);
+      await sleep(1200);
+
+      const end = await client.evaluate(A11Y_SNAPSHOT);
+      const endProblem = documentProblems(end, "landing page, end of the track");
+      if (endProblem) return fail(endProblem, { end });
 
       // The product page is the other shape of page: a grid of buttons and a
       // dialog that only exists once a card is opened.
@@ -1128,31 +1259,12 @@ export const normalChecks = [
       await waitForSettled(client);
 
       const products = await client.evaluate(A11Y_SNAPSHOT);
-      if (products.h1 !== 1) {
-        return fail(`${products.h1} h1 headings on the products page`, { products });
-      }
-      if (products.skips.length) {
-        return fail(
-          `the products page skips a heading level (${products.skips.join(", ")})`,
-          { products }
-        );
-      }
-      if (products.unnamed.length) {
-        return fail(
-          `${products.unnamed.length} controls on the products page have no accessible name`,
-          { products }
-        );
-      }
-      if (products.missingAlt.length) {
-        return fail(
-          `${products.missingAlt.length} images on the products page have no alt attribute`,
-          { products }
-        );
-      }
+      const productsProblem = documentProblems(products, "products page");
+      if (productsProblem) return fail(productsProblem, { products });
 
       return pass(
-        `landing page: ${home.controls} named controls, ${home.images} described images, one h1; products page: ${products.controls} controls, one h1`,
-        { home, products }
+        `landing page: ${home.controls} controls at the top, ${deep.controls} at the call to action and ${end.controls} at the end of the track, products page: ${products.controls}; one h1 and no unnamed control anywhere`,
+        { home, deep, end, products }
       );
     },
   },
@@ -1166,43 +1278,34 @@ export const normalChecks = [
       await scrollTo(client, 0);
       await sleep(800);
 
-      // Tagging the controls before the walk gives each one a stable name to
-      // report, whatever it is called on screen.
-      const controlCount = await client.evaluate(`(() => {
-        const visible = (el) => {
-          const rect = el.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0) return false;
-          const style = getComputedStyle(el);
-          if (style.visibility === 'hidden' || style.display === 'none') return false;
-          return Number(style.opacity) > 0.05;
-        };
-        const controls = [...document.querySelectorAll("a[href], button, [role='button']")].filter(visible);
-        controls.forEach((el, index) => el.setAttribute('data-a11y-index', String(index)));
-        if (document.activeElement && document.activeElement.blur) {
-          document.activeElement.blur();
-        }
-        return controls.length;
-      })()`);
-      if (!controlCount) return fail("the landing page has no controls at all");
+      let tagged = await client.evaluate(TAG_CONTROLS);
+      if (!tagged) return fail("the landing page has no controls at all");
 
-      const reached = new Set();
-      for (let i = 0; i < controlCount + 2; i++) {
-        await pressKey(client, "Tab", 9);
-        const index = await client.evaluate(`(() => {
-          const el = document.activeElement;
-          if (!el || !el.getAttribute) return null;
-          return el.getAttribute('data-a11y-index');
-        })()`);
-        if (index !== null && index !== undefined) reached.add(index);
+      const reached = await tabWalk(client, tagged);
+
+      // The calls to action are only revealed partway down the track, the eye
+      // appears on the way down, and the disclaimer link is at the end: each
+      // position is tagged and walked, so a control nobody can see at the top
+      // is not silently skipped.
+      if (!(await scrollToCallToAction(client))) {
+        return fail("the call to action never came on screen");
       }
+      tagged = await client.evaluate(TAG_CONTROLS);
+      for (const index of await tabWalk(client, tagged)) reached.add(index);
+
+      const geometry = await scrollGeometry(client);
+      await scrollTo(client, geometry.maxScroll);
+      await sleep(1200);
+      tagged = await client.evaluate(TAG_CONTROLS);
+      for (const index of await tabWalk(client, tagged)) reached.add(index);
 
       const missing = [];
-      for (let i = 0; i < controlCount; i++) {
+      for (let i = 0; i < tagged; i++) {
         if (!reached.has(String(i))) missing.push(i);
       }
       if (missing.length) {
         return fail(
-          `${missing.length} of ${controlCount} controls can never be reached with Tab`,
+          `${missing.length} of ${tagged} controls can never be reached with Tab`,
           { missing }
         );
       }
@@ -1255,7 +1358,7 @@ export const normalChecks = [
       }
 
       return pass(
-        `${controlCount} controls reached with Tab, and Enter on the eye scrolled back to ${top}px`,
+        `${tagged} controls reached with Tab, and Enter on the eye scrolled back to ${top}px`,
         { eye }
       );
     },
