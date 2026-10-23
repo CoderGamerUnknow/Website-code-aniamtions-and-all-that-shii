@@ -1,9 +1,12 @@
-name: Animation audit
+name: Checks
 
-# The audit drives a real browser against the production build. It fails the
-# job when an animation regresses: the bar stops fading, the loader stops
-# counting, the products stop rendering, or the site forgets how to behave
-# when the visitor asked for less motion.
+# Three layers, all of them part of the build:
+#
+#   checks  - lint and the unit tests: the code the site is made of.
+#   audit   - a real browser against the production bundle: the behaviour a
+#             visitor gets. It fails the job when an animation regresses, when
+#             a control stops being reachable from the keyboard, or when the
+#             console starts complaining.
 
 on:
   push:
@@ -12,6 +15,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
   audit:
     runs-on: ubuntu-latest
 
