@@ -16,7 +16,7 @@ const OCCLUDER_SELECTOR = "[data-scene-occluder]";
  * count: on a viewport taller than the disclaimer a strip of the scene stays
  * visible above it, and the scene has to keep drawing there.
  */
-function isSceneSeen(canvas) {
+export function isSceneSeen(canvas) {
   if (document.hidden) return false;
 
   const box = canvas.getBoundingClientRect();

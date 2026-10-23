@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "test": "node --test",
     "preview": "vite preview",
     "audit:anim": "node tools/anim-audit/index.mjs",
     "audit:anim:dist": "node tools/anim-audit/index.mjs --no-build"
@@ -32,6 +33,7 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
+    "jsdom": "^30.1.3",
     "postcss": "^8.4.31",
     "sass": "^1.69.5",
     "tailwindcss": "^3.3.5",
