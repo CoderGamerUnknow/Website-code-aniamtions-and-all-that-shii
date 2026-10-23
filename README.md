@@ -31,7 +31,26 @@ npm install
 npm run dev      # start dev server
 npm run build    # production build
 npm run lint     # eslint
+npm test         # unit tests (node --test)
 ```
+
+The landing route is part of the first download; `/technology` and `/products` are
+fetched on demand. Import pages from their own module rather than from
+`src/pages/index.js` — the barrel re-exports every route, which pulls the lazy ones
+back into the initial chunk.
+
+## Unit tests
+
+The pieces that can be reasoned about without a browser are tested with the runner
+that ships with Node and jsdom for the DOM, so there is no test framework to keep in
+step with Vite:
+
+- `src/hooks/useSceneVisibility.test.js` — every way the canvas scene can be hidden
+  (a hidden tab, a zero-sized canvas, a panel covering the viewport, a panel that
+  only covers the bottom) and every way it is still partly visible.
+- `src/const/data.test.js` — the product data against what the SVG renderer can
+  draw, so an unknown body variant or a GPU with the wrong number of fans fails here
+  instead of silently rendering the wrong artwork.
 
 ## The animation audit
 
@@ -40,7 +59,9 @@ reading the code. The audit builds the site, serves the production bundle, opens
 headless Chrome and asserts what a visitor actually gets: the intro counts to 100 and
 gets out of the way, the bar fades and slides, the iris comes back to life, the scene
 beats land on their own point of the scroll, the product grid renders and switches, a
-client-side navigation starts at the top, and nothing is written to the console.
+client-side navigation starts at the top, every control is reachable with Tab and the
+scroll-to-top eye answers Enter, each page has one `h1` and no skipped heading levels,
+and nothing is written to the console.
 
 It runs the whole suite twice: once with the normal motion and once with
 `prefers-reduced-motion: reduce` emulated, so the reduced-motion path is held to the
@@ -56,7 +77,8 @@ node tools/anim-audit/index.mjs --only nav                   # a single check or
 The run ends with a pass/fail line per check and exits with `1` when a check failed, so
 it can be used as a CI gate. A JSON report is written to `.freebuff/audit/report.json`.
 The workflow in `.github/workflows/anim-audit.yml` runs it on every push and pull
-request.
+request, next to a job that installs from the lockfile and runs the linter and the unit
+tests.
 
 The audit drives Chrome over the DevTools Protocol, so it needs no extra packages; it
 finds Chrome or Edge by itself and `CHROME_PATH` overrides the search. A check that
